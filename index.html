@@ -815,11 +815,10 @@ const TOTAL_SECTIONS = 5;
 function goNext(sectionIdx) {
   // 인적사항 섹션은 별도 검사
   if (sectionIdx === 0) {
-    const sid = document.getElementById('student-id').value.trim();
     const sname = document.getElementById('student-name').value.trim();
     const sbirth = document.getElementById('student-birth').value;
-    if (!sid || !sname || !sbirth) {
-      alert('수험번호, 이름, 생년월일을 모두 입력해 주세요.');
+    if (!sname || !sbirth) {
+      alert('이름과 생년월일을 입력해 주세요.');
       return;
     }
     showSection(1);
@@ -1043,7 +1042,7 @@ document.getElementById('main-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   let valid = true;
 
-  const studentId = document.getElementById('student-id').value.trim();
+  const studentId = document.getElementById('student-id').value.trim() || '';
   const name = document.getElementById('student-name').value.trim();
   const birth = document.getElementById('student-birth').value;
 
