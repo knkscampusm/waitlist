@@ -199,15 +199,15 @@
       <textarea id="cfg-body" style="min-height:140px;">정규시즌 입소 가능한 대기자 순번이 되어 안내 드립니다.&lt;br&gt;국/수/영 수업 선생님 선택 설문은 추후에 별도로 링크를 보내드릴 예정입니다.&lt;br&gt;&lt;br&gt;&lt;strong&gt;※현재 기숙사 1인실 여석이 없습니다. 다인실로 배정되며, 1인실을 희망하는 경우 입소 후 1인실 대기 가능합니다.&lt;/strong&gt;&lt;br&gt;※남학생 다인실은 4인실로 운영되고 있습니다.</textarea>
     </div>
     <div class="field-row">
-      <label class="field-label">① 입소 희망 문구</label>
-      <input type="text" id="cfg-enroll" value="7/24(금) ~ 7/26(일) 사이에 입소를 희망합니다.">
-    </div>
-    <div class="field-row">
-      <label class="field-label">입소 희망일 선택 가능 범위 (학생이 날짜 선택 시 이 범위만 고를 수 있어요)</label>
+      <label class="field-label">입소 희망일 선택 가능 범위 (날짜만 입력하면 아래 문구가 자동으로 채워져요)</label>
       <div class="field-grid">
         <input type="date" id="cfg-enroll-start">
         <input type="date" id="cfg-enroll-end">
       </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label">① 입소 희망 문구 <span style="font-weight:400;color:#aaa;">(자동생성됨, 직접 수정도 가능)</span></label>
+      <input type="text" id="cfg-enroll" value="7/24(금) ~ 7/26(일) 사이에 입소를 희망합니다.">
     </div>
     <div class="field-row">
       <label class="field-label">② 대기 연장 문구</label>
@@ -315,6 +315,24 @@ async function loadConfig() {
     showMsg('config-status', 'err', '안내문을 불러오지 못했습니다: ' + e.message);
   }
 }
+
+// ====== 입소 희망일 범위 → 문구 자동 생성 ======
+function koreanDow(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+}
+function formatMD(dateStr) {
+  const [y, m, day] = dateStr.split('-');
+  return `${parseInt(m)}/${parseInt(day)}(${koreanDow(dateStr)})`;
+}
+function updateEnrollLabelFromDates() {
+  const start = document.getElementById('cfg-enroll-start').value;
+  const end = document.getElementById('cfg-enroll-end').value;
+  if (!start || !end) return;
+  document.getElementById('cfg-enroll').value = `${formatMD(start)} ~ ${formatMD(end)} 사이에 입소를 희망합니다.`;
+}
+document.getElementById('cfg-enroll-start').addEventListener('change', updateEnrollLabelFromDates);
+document.getElementById('cfg-enroll-end').addEventListener('change', updateEnrollLabelFromDates);
 
 document.getElementById('btn-save-config').addEventListener('click', async () => {
   const payload = {
