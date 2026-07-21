@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대기자 관리 - 강남대성기숙 의대관</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // ====== Firebase 설정 (index.html과 동일한 프로젝트여야 함) ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyBuQmV1fnv_ojIGReUvirBr_ZArQmQPaJM",
+    authDomain: "campums-waiting-list.firebaseapp.com",
+    projectId: "campums-waiting-list",
+    storageBucket: "campums-waiting-list.firebasestorage.app",
+    messagingSenderId: "1039522847321",
+    appId: "1:1039522847321:web:095f1d8b94bf33a2976f48"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    background: #f0f0f0;
+    color: #202124;
+    padding: 24px 16px 80px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 18px; }
+
+  .action-bar { display:flex; gap:10px; margin-bottom: 18px; flex-wrap:wrap; }
+
+  .btn {
+    border:none; border-radius:6px; padding:9px 18px; font-size:13px; font-weight:500;
+    cursor:pointer; transition:background .15s;
+  }
+  .btn-primary { background:#6750a4; color:#fff; }
+  .btn-primary:hover { background:#5a4496; }
+  .btn-outline { background:#fff; color:#6750a4; border:1px solid #6750a4; }
+  .btn-outline:hover { background:#f3f0ff; }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn:disabled { background:#ccc; color:#fff; cursor:not-allowed; }
+
+  .top-bar { background: #6750a4; height: 8px; border-radius: 8px 8px 0 0; }
+  .panel {
+    background: #fff;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .panel-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display:flex; align-items:center; gap:8px; }
+  .panel-title .badge { font-size:11px; font-weight:500; color:#6750a4; background:#f3f0ff; padding:2px 8px; border-radius:10px; }
+
+  label.field-label { display:block; font-size:13px; font-weight:500; color:#444; margin-bottom:6px; }
+  textarea, input[type=text], input[type=date], input[type=url] {
+    width:100%; border:1px solid #ddd; border-radius:6px; padding:9px 10px; font-size:13px;
+    font-family:inherit; outline:none; background:#fafafa;
+  }
+  textarea:focus, input:focus { border-color:#6750a4; background:#fff; }
+  textarea { min-height:90px; resize:vertical; }
+  .field-row { margin-bottom:14px; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  .upload-drop {
+    border:2px dashed #c8b8ff; border-radius:8px; padding:24px; text-align:center;
+    color:#888; font-size:13px; cursor:pointer; transition:.15s;
+  }
+  .upload-drop:hover { background:#f8f5ff; border-color:#6750a4; }
+  .upload-drop.dragover { background:#f3f0ff; border-color:#6750a4; }
+
+  .status-msg { font-size:12px; margin-top:10px; padding:8px 10px; border-radius:6px; display:none; }
+  .status-msg.show { display:block; }
+  .status-msg.ok { background:#eafaf0; color:#1e7e4a; }
+  .status-msg.err { background:#fdecea; color:#c0392b; }
+  .status-msg.info { background:#f3f0ff; color:#4a3b8c; }
+
+  /* 탭 */
+  .tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:0; }
+  .tab-item {
+    padding:8px 16px; font-size:13px; font-weight:500; color:#888; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
+  }
+  .tab-item:hover { color:#6750a4; }
+  .tab-item.active { color:#6750a4; border-bottom-color:#6750a4; font-weight:700; }
+
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .toolbar input[type=text] { max-width:220px; }
+  .toolbar select {
+    border:1px solid #ddd; border-radius:6px; padding:8px 10px; font-size:13px; background:#fafafa;
+  }
+  .count-pill { font-size:12px; color:#666; margin-left:auto; }
+
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { padding:9px 8px; text-align:left; border-bottom:1px solid #eee; white-space:nowrap; }
+  th { color:#888; font-weight:500; font-size:11.5px; position:sticky; top:0; background:#fff; }
+  tbody tr:hover { background:#faf9ff; }
+
+  .badge-status {
+    display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:10px;
+  }
+  .badge-none { background:#eee; color:#888; }
+  .badge-enroll { background:#e3f6e9; color:#1e7e4a; }
+  .badge-extend { background:#fff4de; color:#a06b0f; }
+  .badge-cancel { background:#fdecea; color:#c0392b; }
+  .badge-class-done { background:#e9e3ff; color:#5a4496; }
+  .badge-class-none { background:#eee; color:#aaa; }
+
+  .table-scroll { overflow-x:auto; max-height:640px; overflow-y:auto; }
+
+  .modal-bg {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-bg.show { display:flex; }
+  .modal {
+    background:#fff; border-radius:10px; padding:24px; max-width:560px; width:100%;
+    max-height:84vh; overflow-y:auto; position:relative;
+  }
+  .modal h3 { font-size:16px; margin-bottom:16px; }
+  .modal .row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; border-bottom:1px solid #f2f2f2; }
+  .modal .row .k { color:#888; }
+  .modal .close-x { position:absolute; top:18px; right:20px; cursor:pointer; color:#888; font-size:18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📋 대기자 관리</h1>
+  <div class="subtitle">강남대성기숙 의대관 · 대기자 입소/수업신청 통합 관리</div>
+
+  <!-- 상단 액션 버튼 -->
+  <div class="action-bar">
+    <button class="btn btn-outline" id="btn-open-config">✏️ 안내문 편집</button>
+    <button class="btn btn-outline" id="btn-open-upload">📥 명단 업로드</button>
+    <button class="btn btn-outline" id="btn-open-linksettings">🔗 링크 설정</button>
+  </div>
+
+  <!-- 명단 -->
+  <div class="top-bar"></div>
+  <div class="panel">
+    <div class="panel-title">👥 대기자 명단 <span class="badge" id="live-badge">실시간</span></div>
+
+    <div class="tab-bar" id="tab-bar">
+      <div class="tab-item active" data-batch="__all__">전체</div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="이름 / 수험번호 검색">
+      <select id="filter-stage">
+        <option value="">전체 단계</option>
+      </select>
+      <select id="filter-status">
+        <option value="">전체 응답상태</option>
+        <option value="none">미응답</option>
+        <option value="enroll">입소 희망</option>
+        <option value="extend">대기 연장</option>
+        <option value="cancel">대기 취소</option>
+      </select>
+      <span class="count-pill" id="count-pill">0명</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>수험번호</th>
+            <th>그룹</th>
+            <th>전형명</th>
+            <th>단계</th>
+            <th>연락처</th>
+            <th>개인 링크</th>
+            <th>입소여부 응답</th>
+            <th>희망일</th>
+            <th>수업신청</th>
+          </tr>
+        </thead>
+        <tbody id="student-tbody">
+          <tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 안내문 편집 -->
+<div class="modal-bg" id="modal-config">
+  <div class="modal">
+    <span class="close-x" data-close="modal-config">✕</span>
+    <h3>✏️ 안내문 편집</h3>
+    <div class="field-row">
+      <label class="field-label">제목 (HTML 가능, &lt;br&gt;로 줄바꿈)</label>
+      <input type="text" id="cfg-title" value="강남대성기숙 의대관&lt;br&gt;입소 안내">
+    </div>
+    <div class="field-row">
+      <label class="field-label">본문 안내 (HTML 가능)</label>
+      <textarea id="cfg-body" style="min-height:140px;">정규시즌 입소 가능한 대기자 순번이 되어 안내 드립니다.&lt;br&gt;국/수/영 수업 선생님 선택 설문은 추후에 별도로 링크를 보내드릴 예정입니다.&lt;br&gt;&lt;br&gt;&lt;strong&gt;※현재 기숙사 1인실 여석이 없습니다. 다인실로 배정되며, 1인실을 희망하는 경우 입소 후 1인실 대기 가능합니다.&lt;/strong&gt;&lt;br&gt;※남학생 다인실은 4인실로 운영되고 있습니다.</textarea>
+    </div>
+    <div class="field-row">
+      <label class="field-label">① 입소 희망 문구</label>
+      <input type="text" id="cfg-enroll" value="7/24(금) ~ 7/26(일) 사이에 입소를 희망합니다.">
+    </div>
+    <div class="field-row">
+      <label class="field-label">② 대기 연장 문구</label>
+      <input type="text" id="cfg-extend" value="현재는 입소를 희망하지 않으며, 대기를 연장합니다.">
+    </div>
+    <div class="field-row">
+      <label class="field-label">③ 대기 취소 문구</label>
+      <input type="text" id="cfg-cancel" value="입소를 희망하지 않으며, 대기를 취소합니다.">
+    </div>
+    <div class="field-row">
+      <label class="field-label">응답 마감 안내 (참고용, 문구에 자유롭게 활용)</label>
+      <input type="text" id="cfg-deadline" placeholder="예) 7/22(수) 오전 9시까지 응답 부탁드립니다.">
+    </div>
+    <button class="btn btn-primary" id="btn-save-config">저장</button>
+    <div class="status-msg" id="config-status"></div>
+  </div>
+</div>
+
+<!-- 모달: 명단 업로드 -->
+<div class="modal-bg" id="modal-upload">
+  <div class="modal">
+    <span class="close-x" data-close="modal-upload">✕</span>
+    <h3>📥 대기자 명단 업로드</h3>
+    <div class="upload-drop" id="drop-zone">
+      엑셀 파일을 끌어다 놓거나 클릭해서 선택하세요 (.xlsx)<br>
+      <span style="font-size:11.5px;color:#aaa;">업로드하면 오늘 날짜의 새 탭이 생성됩니다. 기존 학생은 응답 데이터(입소여부/수업신청)를 유지한 채 기본정보만 갱신됩니다.</span>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none;">
+    </div>
+    <div class="status-msg" id="upload-status"></div>
+  </div>
+</div>
+
+<!-- 모달: 링크 설정 -->
+<div class="modal-bg" id="modal-linksettings">
+  <div class="modal">
+    <span class="close-x" data-close="modal-linksettings">✕</span>
+    <h3>🔗 개인 링크 기본 주소</h3>
+    <div class="field-row">
+      <input type="url" id="base-url" value="https://knkscampusm.github.io/wait/index.html" placeholder="https://knkscampusm.github.io/wait/index.html">
+    </div>
+    <div style="font-size:12px;color:#888;">학생별 링크 = 이 주소 + <code>?c=수험번호</code> (수험번호가 짧아서 별도 단축 서비스 없이 그대로 사용합니다)</div>
+    <button class="btn btn-primary" id="btn-save-linksettings" style="margin-top:14px;">저장</button>
+    <div class="status-msg" id="link-status"></div>
+  </div>
+</div>
+
+<!-- 모달: 수업신청 상세 -->
+<div class="modal-bg" id="modal-detail">
+  <div class="modal">
+    <span class="close-x" data-close="modal-detail">✕</span>
+    <h3 id="modal-name">학생 상세</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const Q_LABELS = {
+  q1: '국어(독서)', q2: '국어(문학)', q3: '국어선택', q4: '수학Ⅰ',
+  q5: '수학Ⅱ', q6: '수학선택', q7: '영어', q8: '탐구'
+};
+const STATUS_LABEL = { enroll: '입소 희망', extend: '대기 연장', cancel: '대기 취소' };
+
+let allStudents = [];
+let allBatches = [];
+let currentTab = '__all__';
+let baseUrl = 'https://knkscampusm.github.io/wait/index.html';
+
+// ====== 모달 공통 ======
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(el => {
+  el.addEventListener('click', () => closeModal(el.dataset.close));
+});
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', (e) => { if (e.target === bg) closeModal(bg.id); });
+});
+
+document.getElementById('btn-open-config').addEventListener('click', () => openModal('modal-config'));
+document.getElementById('btn-open-upload').addEventListener('click', () => openModal('modal-upload'));
+document.getElementById('btn-open-linksettings').addEventListener('click', () => openModal('modal-linksettings'));
+
+function showMsg(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = 'status-msg show ' + type;
+  el.textContent = text;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ====== 안내문 설정: 불러오기 / 저장 ======
+async function loadConfig() {
+  try {
+    const snap = await db.collection('waitlist_config').doc('notice').get();
+    if (snap.exists) {
+      const d = snap.data();
+      if (d.title) document.getElementById('cfg-title').value = d.title;
+      if (d.body) document.getElementById('cfg-body').value = d.body;
+      if (d.enrollLabel) document.getElementById('cfg-enroll').value = d.enrollLabel;
+      if (d.extendLabel) document.getElementById('cfg-extend').value = d.extendLabel;
+      if (d.cancelLabel) document.getElementById('cfg-cancel').value = d.cancelLabel;
+      if (d.deadlineNote) document.getElementById('cfg-deadline').value = d.deadlineNote;
+    }
+  } catch (e) {
+    showMsg('config-status', 'err', '안내문을 불러오지 못했습니다: ' + e.message);
+  }
+}
+
+document.getElementById('btn-save-config').addEventListener('click', async () => {
+  const payload = {
+    title: document.getElementById('cfg-title').value,
+    body: document.getElementById('cfg-body').value,
+    enrollLabel: document.getElementById('cfg-enroll').value,
+    extendLabel: document.getElementById('cfg-extend').value,
+    cancelLabel: document.getElementById('cfg-cancel').value,
+    deadlineNote: document.getElementById('cfg-deadline').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try {
+    await db.collection('waitlist_config').doc('notice').set(payload, { merge: true });
+    showMsg('config-status', 'ok', '저장되었습니다. 학생 화면에 바로 반영됩니다.');
+  } catch (e) {
+    showMsg('config-status', 'err', '저장 실패: ' + e.message);
+  }
+});
+
+// ====== 링크 설정 ======
+function loadLinkSettings() {
+  const saved = localStorage_safe_get('waitlist_base_url');
+  if (saved) { baseUrl = saved; document.getElementById('base-url').value = saved; }
+}
+function localStorage_safe_get(key) {
+  try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+function localStorage_safe_set(key, val) {
+  try { window.localStorage.setItem(key, val); } catch (e) {}
+}
+document.getElementById('btn-save-linksettings').addEventListener('click', () => {
+  baseUrl = document.getElementById('base-url').value.trim() || baseUrl;
+  localStorage_safe_set('waitlist_base_url', baseUrl);
+  showMsg('link-status', 'ok', '저장되었습니다.');
+  renderTable();
+});
+
+// ====== 엑셀 업로드 (날짜별 배치/탭 생성) ======
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function excelDateToYMD(raw) {
+  if (raw == null || raw === '') return '';
+  let s = String(raw).trim();
+  if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return s;
+}
+
+function todayDateStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}`;
+}
+
+async function handleFile(file) {
+  showMsg('upload-status', 'info', '엑셀을 읽는 중입니다…');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    if (!rows.length) {
+      showMsg('upload-status', 'err', '데이터가 없는 파일입니다.');
+      return;
+    }
+
+    // 오늘 날짜 배치(탭) 새로 생성
+    const dateStr = todayDateStr();
+    const sameDateCount = allBatches.filter(b => b.dateStr === dateStr).length;
+    const seq = sameDateCount + 1;
+    const batchRef = db.collection('waitlist_batches').doc();
+    const batchId = batchRef.id;
+
+    let batch = db.batch();
+    let count = 0, batchCount = 0;
+
+    for (const row of rows) {
+      const sid = String(row['수험번호'] || '').trim();
+      if (!sid) continue;
+      const docRef = db.collection('waitlist_students').doc(sid);
+      const data = {
+        sid,
+        name: String(row['성명'] || '').trim(),
+        birth: excelDateToYMD(row['생년월일']),
+        phone: String(row['학생 연락처'] || '').trim(),
+        parentPhone: String(row['학부모 연락처'] || '').trim(),
+        group: String(row['그룹'] || '').trim(),
+        admissionType: String(row['전형명'] || '').trim(),
+        stage: String(row['단계'] || '').trim(),
+        applyPeriod: String(row['원서접수기간'] || '').trim(),
+        note: String(row['비고상세'] || '').trim(),
+        batchId: batchId,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      // merge: true → 기존 status/desiredDate/classAnswers 등 응답 데이터는 그대로 유지됨
+      batch.set(docRef, data, { merge: true });
+      count++; batchCount++;
+
+      if (batchCount >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    }
+    if (batchCount > 0) await batch.commit();
+
+    await batchRef.set({
+      dateStr, seq, count,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    showMsg('upload-status', 'ok', `${count}명 업로드 완료 (기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
+    fileInput.value = '';
+  } catch (e) {
+    showMsg('upload-status', 'err', '업로드 실패: ' + e.message);
+  }
+}
+
+// ====== 실시간 구독 ======
+db.collection('waitlist_students').onSnapshot((snap) => {
+  allStudents = snap.docs.map(d => d.data());
+  populateStageFilter();
+  renderTable();
+}, (err) => {
+  document.getElementById('student-tbody').innerHTML =
+    `<tr><td colspan="10" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+});
+
+db.collection('waitlist_batches').orderBy('createdAt', 'asc').onSnapshot((snap) => {
+  allBatches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderTabs();
+}, () => { /* 배치 로딩 실패해도 전체 탭은 동작 */ });
+
+function batchLabel(b) {
+  const sameDate = allBatches.filter(x => x.dateStr === b.dateStr);
+  return sameDate.length > 1 ? `${b.dateStr}_${b.seq}` : b.dateStr;
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  const tabs = ['<div class="tab-item' + (currentTab === '__all__' ? ' active' : '') + '" data-batch="__all__">전체</div>'];
+  allBatches.forEach(b => {
+    tabs.push(`<div class="tab-item${currentTab === b.id ? ' active' : ''}" data-batch="${b.id}">${batchLabel(b)} <span style="color:#bbb;font-weight:400;">(${b.count || 0})</span></div>`);
+  });
+  bar.innerHTML = tabs.join('');
+  bar.querySelectorAll('.tab-item').forEach(el => {
+    el.addEventListener('click', () => {
+      currentTab = el.dataset.batch;
+      renderTabs();
+      renderTable();
+    });
+  });
+}
+
+function populateStageFilter() {
+  const sel = document.getElementById('filter-stage');
+  const current = sel.value;
+  const stages = [...new Set(allStudents.map(s => s.stage).filter(Boolean))];
+  sel.innerHTML = '<option value="">전체 단계</option>' + stages.map(s => `<option value="${s}">${s}</option>`).join('');
+  sel.value = current;
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  if (ts.toDate) return ts.toDate().toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  return '';
+}
+
+function renderTable() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const stageFilter = document.getElementById('filter-stage').value;
+  const statusFilter = document.getElementById('filter-status').value;
+
+  let list = allStudents.filter(s => {
+    if (currentTab !== '__all__' && s.batchId !== currentTab) return false;
+    if (q && !((s.name||'').toLowerCase().includes(q) || (s.sid||'').includes(q))) return false;
+    if (stageFilter && s.stage !== stageFilter) return false;
+    if (statusFilter === 'none' && s.status) return false;
+    if (statusFilter && statusFilter !== 'none' && s.status !== statusFilter) return false;
+    return true;
+  });
+
+  document.getElementById('count-pill').textContent = `${list.length}명`;
+
+  if (!list.length) {
+    document.getElementById('student-tbody').innerHTML =
+      '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+    return;
+  }
+
+  document.getElementById('student-tbody').innerHTML = list.map(s => {
+    const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
+    const statusBadge = s.status
+      ? `<span class="badge-status badge-${s.status}">${STATUS_LABEL[s.status] || s.status}</span>`
+      : `<span class="badge-status badge-none">미응답</span>`;
+    const classBadge = s.classAnswers
+      ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s.sid}')">제출완료 · 보기</span>`
+      : `<span class="badge-status badge-class-none">-</span>`;
+    return `
+      <tr>
+        <td>${s.name || ''}</td>
+        <td>${s.sid || ''}</td>
+        <td>${s.group || ''}</td>
+        <td>${s.admissionType || ''}</td>
+        <td>${s.stage || ''}</td>
+        <td>${s.phone || ''}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
+        <td>${statusBadge}</td>
+        <td>${s.desiredDate || ''}</td>
+        <td>${classBadge}</td>
+      </tr>`;
+  }).join('');
+}
+
+function copyLink(link, btn) {
+  navigator.clipboard.writeText(link).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '복사됨!';
+    setTimeout(() => btn.textContent = orig, 1200);
+  }).catch(() => alert(link));
+}
+
+function openDetail(sid) {
+  const s = allStudents.find(x => x.sid === sid);
+  if (!s) return;
+  document.getElementById('modal-name').textContent = `${s.name} (${s.sid}) 수업신청 내역`;
+  const ans = s.classAnswers || {};
+  let rows = Object.entries(Q_LABELS).map(([k, label]) => {
+    return `<div class="row"><span class="k">${label}</span><span>${ans[k] || '-'}</span></div>`;
+  }).join('');
+  rows += `<div class="row"><span class="k">입소 희망일</span><span>${s.desiredDate || '-'}</span></div>`;
+  rows += `<div class="row"><span class="k">제출 시각</span><span>${fmtDate(s.classSubmittedAt)}</span></div>`;
+  document.getElementById('modal-body').innerHTML = rows;
+  openModal('modal-detail');
+}
+
+document.getElementById('search-input').addEventListener('input', renderTable);
+document.getElementById('filter-stage').addEventListener('change', renderTable);
+document.getElementById('filter-status').addEventListener('change', renderTable);
+
+loadConfig();
+loadLinkSettings();
+</script>
+</body>
+</html>
