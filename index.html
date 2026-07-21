@@ -451,7 +451,7 @@
     </div>
     <div class="error-msg" id="err-date" style="max-width:680px;margin:0 auto 8px;">입소 희망일을 입력해 주세요.</div>
     <div class="section-nav">
-      <div></div>
+      <button type="button" class="btn-prev" id="btn-prev-date">← 이전</button>
       <button type="button" id="btn-next-date" class="btn-next">필수 수업 신청</button>
     </div>
   </div>
@@ -493,7 +493,7 @@
     <div class="section-title-bar">📘 국어</div>
     <div id="wrap-1"></div>
     <div class="section-nav">
-      <div></div>
+      <button type="button" class="btn-prev" id="btn-prev-1">← 이전</button>
       <button type="button" class="btn-next" id="btn-next-1">다음 → 수학</button>
     </div>
   </div>
@@ -1301,19 +1301,32 @@ function renderStatusOptions() {
     if (noticeConfig.enrollEndDate) dateInput.max = noticeConfig.enrollEndDate;
 
     // ====== 관리자 확정(잠금) 여부에 따른 재접속 처리 ======
-    // - 입소여부가 "확정"(statusLocked) 되면: 완전히 잠김, 편집 불가 화면만 표시
-    // - 확정 전이면: 이전 응답을 기본값으로 채운 채 처음부터(입소여부 선택) 다시 진행 가능
-    // - 수업신청은 별도로 "확정"(classLocked) 여부에 따라 필수수업신청 단계에서 잠금 처리
+    // - 입소여부(statusLocked)와 수업신청(classLocked)은 서로 독립적으로 잠금 처리됨
+    // - 입소여부 확정 + 수업신청 미확정(그리고 상태가 '입소희망'인 경우): 입소여부/희망일은 잠그되, 수업신청 화면은 바로 진행 가능
+    // - 입소여부 확정 + 수업신청도 확정(또는 대기연장/취소 확정): 완전 잠금, 완료 화면만 표시
+    // - 입소여부 미확정: 이전 응답을 기본값으로 채운 채 처음부터 다시 진행 가능
     studentClassLocked = !!student.classLocked;
 
     if (student.statusLocked) {
+      if (student.status === 'enroll' && !student.classLocked) {
+        // 입소여부/희망일은 확정되었지만 수업신청은 아직 가능
+        desiredDate = student.desiredDate || '';
+        if (desiredDate) document.getElementById('desired-date').value = desiredDate;
+        flowOrder = ['classchoice', '1', '2', '3', '4'];
+        document.getElementById('btn-prev-classchoice').style.display = 'none'; // 입소여부로 되돌아갈 수 없음
+        document.getElementById('loading').classList.remove('show');
+        document.getElementById('app-root').style.display = 'block';
+        showSectionById('classchoice');
+        return;
+      }
+      // 완전 잠금 (대기연장/취소 확정, 또는 입소+수업신청 모두 확정)
       document.getElementById('loading').classList.remove('show');
       showDone(student.status, true);
       document.getElementById('app-root').style.display = 'block';
       return;
     }
 
-    // 확정 전 → 이전 응답 프리필 후 처음부터 진행
+    // 입소여부 확정 전 → 이전 응답 프리필 후 처음부터 진행
     prefillStatus = student.status || null;
     if (student.desiredDate) {
       desiredDate = student.desiredDate;
@@ -1412,7 +1425,9 @@ function showDeferred() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+document.getElementById('btn-prev-date').addEventListener('click', () => showSectionById('0'));
 document.getElementById('btn-next-1').addEventListener('click', () => goNext(1));
+document.getElementById('btn-prev-1').addEventListener('click', () => showSectionById('classchoice'));
 document.getElementById('btn-next-2').addEventListener('click', () => goNext(2));
 document.getElementById('btn-next-3').addEventListener('click', () => goNext(3));
 document.getElementById('btn-prev-2').addEventListener('click', () => goPrev(2));
