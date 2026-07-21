@@ -3,7 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>강남대성기숙 의대관 수업 신청</title>
+<title>강남대성기숙 의대관 입소 안내 · 수업 신청</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  // ====== Firebase 설정 (여기만 교체하면 됨) ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyBuQmV1fnv_ojIGReUvirBr_ZArQmQPaJM",
+    authDomain: "campums-waiting-list.firebaseapp.com",
+    projectId: "campums-waiting-list",
+    storageBucket: "campums-waiting-list.firebasestorage.app",
+    messagingSenderId: "1039522847321",
+    appId: "1:1039522847321:web:095f1d8b94bf33a2976f48"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -361,23 +376,28 @@
 <body>
 
 <!-- 로딩 -->
-<div class="loading-overlay" id="loading">
+<div class="loading-overlay show" id="loading">
   <div class="spinner"></div>
-  <p>제출 중입니다…</p>
+  <p id="loading-text">정보를 불러오는 중입니다…</p>
+</div>
+
+<!-- 링크 오류 화면 -->
+<div id="link-error" style="display:none;max-width:680px;margin:60px auto;text-align:center;padding:0 16px;">
+  <div class="card">
+    <h2 style="color:#c0392b;font-size:20px;margin-bottom:12px;">링크를 확인할 수 없습니다</h2>
+    <p style="color:#555;font-size:14px;line-height:1.7;">전달받으신 링크가 정확한지 다시 확인해 주세요.<br>문제가 계속되면 행정실로 문의해 주세요.</p>
+  </div>
 </div>
 
 <!-- 헤더 카드 -->
+<div id="app-root" style="display:none;">
 <div style="max-width:680px;margin:0 auto;">
   <div class="top-bar"></div>
 </div>
 <div class="card header-card">
-  <h1 class="form-title">강남대성기숙 의대관<br>수업 신청</h1>
-  <div class="form-desc">
-    <p>아래 설명을 확인하신 후, 수강을 희망하는 수업의 선생님을 선택해 주세요.</p>
-    <p>※ 수업은 최소 3개 이상 선택해 주시고, 수강하지 않을 과목은 <strong>'자습'</strong>을 선택해 주세요.<br>
-    (자습 선택은 수업 수에 포함되지 않습니다.)</p>
-    <p>※ 국/수/영 수업은 입소 이후 2주 단위로 변경 신청을 받으며, 탐구 수업은 상시 변경 가능합니다. (행정실 문의)</p>
-    <p>※ 기본적으로 현장강의로 배정되나, 수강 인원에 따라 일부 수업의 경우 라이브(Live) 수업으로 배정될 수 있습니다.</p>
+  <h1 class="form-title" id="notice-title">강남대성기숙 의대관<br>입소 안내</h1>
+  <div class="form-desc" id="notice-body">
+    <!-- 관리자 화면에서 편집한 안내문 내용이 여기 표시됩니다 -->
   </div>
 </div>
 
@@ -397,25 +417,42 @@
 <!-- 폼 -->
 <form id="main-form">
 
-  <!-- 섹션 0: 인적사항 -->
+  <!-- 숨김: 학생 식별 정보 (Firestore에서 자동 로드, 화면 표시 안 함) -->
+  <input type="hidden" id="student-id">
+  <input type="hidden" id="student-name">
+  <input type="hidden" id="student-birth">
+
+  <!-- 섹션 0: 입소희망여부 -->
   <div class="section-wrap active" id="section-0">
-    <div class="section-title-bar">👤 인적사항</div>
+    <div class="section-title-bar">📋 입소희망여부</div>
     <div class="card">
-      <div id="student-id-wrap" style="display:none">
-        <input type="text" id="student-id">
+      <div style="margin-bottom:16px;font-size:14px;color:#555;">
+        <strong id="notice-student-name">-</strong> 학생 (생년월일: <span id="notice-student-birth">-</span>)
       </div>
-      <div class="input-group">
-        <label>학생의 이름을 입력해주세요 <span class="required">*</span></label>
-        <input type="text" id="student-name" placeholder="이름 입력">
-      </div>
-      <div class="input-group" style="margin-bottom:0">
-        <label>학생의 생년월일을 입력해주세요 <span class="required">*</span></label>
-        <input type="date" id="student-birth">
-      </div>
+      <div class="question-label">입소희망여부를 선택해 주세요 <span class="required">*</span></div>
+      <ul class="options-list" id="status-options"></ul>
+      <div class="error-msg" id="err-status">입소희망여부를 선택해 주세요.</div>
     </div>
     <div class="section-nav">
       <div></div>
-      <button type="button" id="btn-next-info" class="btn-next">다음 → 국어</button>
+      <button type="button" id="btn-next-status" class="btn-next">다음</button>
+    </div>
+  </div>
+
+  <!-- 섹션 date: 입소 희망일 -->
+  <div class="section-wrap" id="section-date">
+    <div class="section-title-bar">📅 입소 희망일</div>
+    <div class="card">
+      <div class="question-label">입소 희망하시는 날짜를 입력하여 주세요 <span class="required">*</span></div>
+      <div style="font-size:13px;color:#888;margin-bottom:14px;">🚩 제출해주신 날짜 기준으로 교습비를 안내드립니다.</div>
+      <div class="input-group" style="margin-bottom:0">
+        <input type="date" id="desired-date">
+      </div>
+    </div>
+    <div class="error-msg" id="err-date" style="max-width:680px;margin:0 auto 8px;">입소 희망일을 입력해 주세요.</div>
+    <div class="section-nav">
+      <div></div>
+      <button type="button" id="btn-next-date" class="btn-next">다음 → 국어</button>
     </div>
   </div>
 
@@ -462,14 +499,21 @@
 
 <!-- 완료 화면 -->
 <div id="done-screen">
-  <h2>✅ 신청이 완료되었습니다</h2>
-  <p>수업 신청이 정상적으로 접수되었습니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.</p>
+  <h2 id="done-title">✅ 신청이 완료되었습니다</h2>
+  <p id="done-desc">수업 신청이 정상적으로 접수되었습니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.</p>
 </div>
+
+</div><!-- /app-root -->
 
 <script>
 // ====== 설정 ======
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbym0zrrHH10QmJvXwtE46GWKZDwAsBCYpOzBQhbyMvTaxlWtwRniBxZj1d3GOcJ-UDy/exec';
 const JASEUP_MAX = 6;
+
+// ====== 전역 상태 ======
+let flowOrder = ['0'];
+let waitlistStatus = null;   // 'enroll' | 'extend' | 'cancel'
+let desiredDate = null;
+let noticeConfig = {};       // Firestore waitlist_config/notice
 
 // ====== 수학 충돌 그룹 ======
 // 같은 그룹끼리 동시 선택 불가
@@ -809,22 +853,9 @@ const sectionMap = {
   4: ['q8'],                  // 탐구
 };
 
-let currentSection = 0;
-const TOTAL_SECTIONS = 5;
+let currentSection = '0';
 
 function goNext(sectionIdx) {
-  // 인적사항 섹션은 별도 검사
-  if (sectionIdx === 0) {
-    const sname = document.getElementById('student-name').value.trim();
-    const sbirth = document.getElementById('student-birth').value;
-    if (!sname || !sbirth) {
-      alert('이름과 생년월일을 입력해 주세요.');
-      return;
-    }
-    showSection(1);
-    return;
-  }
-  // 현재 섹션 유효성 검사
   const qids = sectionMap[sectionIdx];
   let valid = true;
   for (const qid of qids) {
@@ -845,26 +876,23 @@ function goNext(sectionIdx) {
     }
   }
   if (!valid) return;
-  showSection(sectionIdx + 1);
+  showSectionById(String(sectionIdx + 1));
 }
 
 function goPrev(sectionIdx) {
-  showSection(sectionIdx - 1);
+  showSectionById(String(sectionIdx - 1));
 }
 
-function showSection(idx) {
+function showSectionById(id) {
   document.querySelectorAll('.section-wrap').forEach(el => el.classList.remove('active'));
-  document.getElementById('section-' + idx).classList.add('active');
-  currentSection = idx;
-  // 진행바
-  const pct = ((idx + 1) / TOTAL_SECTIONS) * 100;
+  document.getElementById('section-' + id).classList.add('active');
+  currentSection = id;
+  const idx = flowOrder.indexOf(id);
+  const pct = ((idx + 1) / flowOrder.length) * 100;
   document.getElementById('progress-fill').style.width = pct + '%';
-  const labels = ['1 / 5 — 인적사항', '2 / 5 — 국어', '3 / 5 — 수학', '4 / 5 — 영어', '5 / 5 — 탐구'];
-  document.getElementById('progress-label').textContent = labels[idx];
-  // 인적사항 섹션에서는 자습 배너 숨김
-  document.getElementById('jaseup-banner').style.display = idx === 0 ? 'none' : 'flex';
-  // 자습 배너: 인적사항 섹션(0)에서는 숨김
-  document.getElementById('jaseup-banner').style.display = idx === 0 ? 'none' : '';
+  const labelMap = { '0': '입소희망여부', 'date': '입소 희망일', '1': '국어', '2': '수학', '3': '영어', '4': '탐구' };
+  document.getElementById('progress-label').textContent = `${idx + 1} / ${flowOrder.length} — ${labelMap[id]}`;
+  document.getElementById('jaseup-banner').style.display = ['1', '2', '3', '4'].includes(id) ? '' : 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1090,32 +1118,53 @@ document.getElementById('main-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  if (SHEET_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
-    console.log('제출 데이터:', { studentId, name, birth, ...answers });
-    showDone();
-    return;
-  }
-
   // suffix 제거 후 저장
   const cleanAnswers = {};
   Object.entries(answers).forEach(([k, v]) => {
     cleanAnswers[k] = typeof v === 'string' ? v.replace(/__[A-Z]$/, '').replace(/__[A-Z]\//g, '/') : v;
   });
-  const payload = { studentId, name, birth, ...cleanAnswers, submittedAt: new Date().toISOString() };
-  // 완료 화면 즉시 표시 후 백그라운드로 시트 전송
-  showDone();
-  fetch(SHEET_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).catch(() => {});
+
+  const payload = {
+    status: 'enroll',
+    desiredDate: desiredDate,
+    statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    classAnswers: cleanAnswers,
+    classSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  // 완료 화면 즉시 표시 후 백그라운드로 Firestore 저장
+  showDone('enroll');
+  db.collection('waitlist_students').doc(studentId).set(payload, { merge: true }).catch(() => {});
 });
 
-function showDone() {
+async function submitStatusOnly(status) {
+  const studentId = document.getElementById('student-id').value.trim();
+  showDone(status);
+  try {
+    await db.collection('waitlist_students').doc(studentId).set({
+      status: status,
+      statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (err) { /* 화면은 이미 완료 표시됨 */ }
+}
+
+function showDone(status) {
   document.getElementById('loading').classList.remove('show');
   document.getElementById('main-form').style.display = 'none';
+  document.querySelectorAll('.progress-label, .progress-bar-wrap').forEach(el => el.style.display = 'none');
   document.getElementById('jaseup-banner').style.display = 'none';
+  const titleEl = document.getElementById('done-title');
+  const descEl = document.getElementById('done-desc');
+  if (status === 'enroll') {
+    titleEl.textContent = '✅ 신청이 완료되었습니다';
+    descEl.innerHTML = '입소 및 수업 신청이 정상적으로 접수되었습니다.<br>희망하신 입소 일자에 따라 교습비를 별도 안내드릴 예정입니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.';
+  } else if (status === 'extend') {
+    titleEl.textContent = '✅ 접수되었습니다';
+    descEl.innerHTML = '대기 연장 신청이 정상적으로 접수되었습니다.<br>추후 입소 가능 시 별도로 안내드리겠습니다.';
+  } else {
+    titleEl.textContent = '✅ 접수되었습니다';
+    descEl.innerHTML = '대기 취소 처리되었습니다.<br>문의사항은 행정실로 연락해 주세요.';
+  }
   document.getElementById('done-screen').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1130,41 +1179,111 @@ document.getElementById('wrap-4').appendChild(tanggErrCard);
 
 // 초기 탐구 UI
 updateTanggUI();
-// 초기 배너 숨김 (인적사항 섹션)
 document.getElementById('jaseup-banner').style.display = 'none';
 
-// ====== URL 파라미터 자동 입력 ======
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const sid = params.get('sid');   // 수험번호
-  const name = params.get('name'); // 이름
-  const birth = params.get('birth'); // 생년월일 (YYYY-MM-DD)
+// ====== 상태 선택지 렌더링 ======
+function renderStatusOptions() {
+  const ul = document.getElementById('status-options');
+  ul.innerHTML = '';
+  const opts = [
+    { value: 'enroll', label: noticeConfig.enrollLabel || '입소를 희망합니다.' },
+    { value: 'extend', label: noticeConfig.extendLabel || '현재는 입소를 희망하지 않으며, 대기를 연장합니다.' },
+    { value: 'cancel', label: noticeConfig.cancelLabel || '입소를 희망하지 않으며, 대기를 취소합니다.' },
+  ];
+  opts.forEach((opt, i) => {
+    const li = document.createElement('li');
+    li.className = 'option-item';
+    li.innerHTML = `<input type="radio" name="status" id="status_${i}" value="${opt.value}"><label for="status_${i}">${opt.label}</label>`;
+    li.addEventListener('click', () => {
+      const radio = li.querySelector('input');
+      radio.checked = true;
+      document.getElementById('err-status').style.display = 'none';
+    });
+    ul.appendChild(li);
+  });
+}
 
-  if (sid) {
-    const el = document.getElementById('student-id');
-    if (el) { el.value = sid; el.readOnly = true; }
+// ====== Firestore에서 학생/안내문 정보 로드 후 초기화 ======
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('c'); // 수험번호 (짧은 코드 역할까지 겸함)
+
+  if (!sid) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('link-error').style.display = 'block';
+    return;
   }
-  if (name) {
-    const el = document.getElementById('student-name');
-    if (el) {
-      el.value = name;
-      el.readOnly = true;
-      el.style.color = '#444';
-      el.style.background = 'transparent';
+
+  try {
+    const [studentSnap, configSnap] = await Promise.all([
+      db.collection('waitlist_students').doc(sid).get(),
+      db.collection('waitlist_config').doc('notice').get(),
+    ]);
+
+    if (!studentSnap.exists) {
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('link-error').style.display = 'block';
+      return;
     }
-  }
-  if (birth) {
-    const el = document.getElementById('student-birth');
-    if (el) {
-      el.value = birth;
-      el.readOnly = true;
-      el.style.color = '#444';
+
+    const student = studentSnap.data();
+    noticeConfig = configSnap.exists ? configSnap.data() : {};
+
+    // 학생 식별 정보 세팅 (화면 비노출, 저장용)
+    document.getElementById('student-id').value = sid;
+    document.getElementById('student-name').value = student.name || '';
+    document.getElementById('student-birth').value = student.birth || '';
+    document.getElementById('notice-student-name').textContent = student.name || '-';
+    document.getElementById('notice-student-birth').textContent = student.birth || '-';
+
+    // 안내문 렌더링
+    document.getElementById('notice-title').innerHTML = noticeConfig.title || '강남대성기숙 의대관<br>입소 안내';
+    document.getElementById('notice-body').innerHTML = noticeConfig.body || '';
+
+    renderStatusOptions();
+
+    // 이미 제출한 경우 재제출 방지 안내(선택적으로 완료화면 표시)
+    if (student.status) {
+      document.getElementById('loading').classList.remove('show');
+      showDone(student.status);
+      document.getElementById('app-root').style.display = 'block';
+      return;
     }
+
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('app-root').style.display = 'block';
+  } catch (err) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('link-error').style.display = 'block';
   }
 })();
 
 // 섹션 이동 버튼 이벤트
-document.getElementById('btn-next-info').addEventListener('click', () => goNext(0));
+document.getElementById('btn-next-status').addEventListener('click', () => {
+  const checked = document.querySelector('input[name="status"]:checked');
+  if (!checked) {
+    document.getElementById('err-status').style.display = 'block';
+    return;
+  }
+  document.getElementById('err-status').style.display = 'none';
+  waitlistStatus = checked.value;
+  if (waitlistStatus === 'enroll') {
+    flowOrder = ['0', 'date', '1', '2', '3', '4'];
+    showSectionById('date');
+  } else {
+    submitStatusOnly(waitlistStatus);
+  }
+});
+document.getElementById('btn-next-date').addEventListener('click', () => {
+  const d = document.getElementById('desired-date').value;
+  if (!d) {
+    document.getElementById('err-date').style.display = 'block';
+    return;
+  }
+  document.getElementById('err-date').style.display = 'none';
+  desiredDate = d;
+  showSectionById('1');
+});
 document.getElementById('btn-next-1').addEventListener('click', () => goNext(1));
 document.getElementById('btn-next-2').addEventListener('click', () => goNext(2));
 document.getElementById('btn-next-3').addEventListener('click', () => goNext(3));
