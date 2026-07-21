@@ -166,12 +166,11 @@
       <table>
         <thead>
           <tr>
-            <th>이름</th>
             <th>수험번호</th>
-            <th>그룹</th>
+            <th>이름</th>
             <th>전형명</th>
-            <th>단계</th>
-            <th>연락처</th>
+            <th>학생번호</th>
+            <th>학부모 번호</th>
             <th>개인 링크</th>
             <th>입소여부 응답</th>
             <th>희망일</th>
@@ -179,7 +178,7 @@
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -202,6 +201,13 @@
     <div class="field-row">
       <label class="field-label">① 입소 희망 문구</label>
       <input type="text" id="cfg-enroll" value="7/24(금) ~ 7/26(일) 사이에 입소를 희망합니다.">
+    </div>
+    <div class="field-row">
+      <label class="field-label">입소 희망일 선택 가능 범위 (학생이 날짜 선택 시 이 범위만 고를 수 있어요)</label>
+      <div class="field-grid">
+        <input type="date" id="cfg-enroll-start">
+        <input type="date" id="cfg-enroll-end">
+      </div>
     </div>
     <div class="field-row">
       <label class="field-label">② 대기 연장 문구</label>
@@ -299,6 +305,8 @@ async function loadConfig() {
       if (d.title) document.getElementById('cfg-title').value = d.title;
       if (d.body) document.getElementById('cfg-body').value = d.body;
       if (d.enrollLabel) document.getElementById('cfg-enroll').value = d.enrollLabel;
+      if (d.enrollStartDate) document.getElementById('cfg-enroll-start').value = d.enrollStartDate;
+      if (d.enrollEndDate) document.getElementById('cfg-enroll-end').value = d.enrollEndDate;
       if (d.extendLabel) document.getElementById('cfg-extend').value = d.extendLabel;
       if (d.cancelLabel) document.getElementById('cfg-cancel').value = d.cancelLabel;
       if (d.deadlineNote) document.getElementById('cfg-deadline').value = d.deadlineNote;
@@ -313,6 +321,8 @@ document.getElementById('btn-save-config').addEventListener('click', async () =>
     title: document.getElementById('cfg-title').value,
     body: document.getElementById('cfg-body').value,
     enrollLabel: document.getElementById('cfg-enroll').value,
+    enrollStartDate: document.getElementById('cfg-enroll-start').value,
+    enrollEndDate: document.getElementById('cfg-enroll-end').value,
     extendLabel: document.getElementById('cfg-extend').value,
     cancelLabel: document.getElementById('cfg-cancel').value,
     deadlineNote: document.getElementById('cfg-deadline').value,
@@ -446,7 +456,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
-    `<tr><td colspan="10" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+    `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
 db.collection('waitlist_batches').orderBy('createdAt', 'asc').onSnapshot((snap) => {
@@ -507,7 +517,7 @@ function renderTable() {
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+      '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
     return;
   }
 
@@ -518,21 +528,35 @@ function renderTable() {
       : `<span class="badge-status badge-none">미응답</span>`;
     const classBadge = s.classAnswers
       ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s.sid}')">제출완료 · 보기</span>`
-      : `<span class="badge-status badge-class-none">-</span>`;
+      : `<span class="badge-status badge-class-none">미제출</span>`;
+    const statusLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
+        <input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','statusLocked',this.checked)"> 확정
+      </label>`;
+    const classLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
+        <input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','classLocked',this.checked)"> 확정
+      </label>`;
+    const submittedAtTxt = s.statusSubmittedAt ? fmtDate(s.statusSubmittedAt) : '';
     return `
       <tr>
-        <td>${s.name || ''}</td>
         <td>${s.sid || ''}</td>
-        <td>${s.group || ''}</td>
+        <td>${s.name || ''}</td>
         <td>${s.admissionType || ''}</td>
-        <td>${s.stage || ''}</td>
         <td>${s.phone || ''}</td>
+        <td>${s.parentPhone || ''}</td>
         <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
-        <td>${statusBadge}</td>
-        <td>${s.desiredDate || ''}</td>
-        <td>${classBadge}</td>
+        <td>${statusBadge}${statusLockCb}</td>
+        <td>${s.desiredDate || ''}${submittedAtTxt ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">${submittedAtTxt}</div>` : ''}</td>
+        <td>${classBadge}${classLockCb}</td>
       </tr>`;
   }).join('');
+}
+
+async function toggleLock(sid, field, checked) {
+  try {
+    await db.collection('waitlist_students').doc(sid).set({ [field]: checked }, { merge: true });
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  }
 }
 
 function copyLink(link, btn) {
