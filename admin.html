@@ -579,7 +579,9 @@ function renderTable() {
 
   currentFilteredList = list;
 
-  document.getElementById('count-pill').textContent = `${list.length}명`;
+  const maleCount = list.filter(s => (s.gender || '').startsWith('남')).length;
+  const femaleCount = list.filter(s => (s.gender || '').startsWith('여')).length;
+  document.getElementById('count-pill').textContent = `남 ${maleCount}명, 여 ${femaleCount}명, 총 ${list.length}명`;
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
