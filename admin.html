@@ -137,6 +137,7 @@
     <button class="btn btn-outline" id="btn-open-config">✏️ 안내문 편집</button>
     <button class="btn btn-outline" id="btn-open-upload">📥 명단 업로드</button>
     <button class="btn btn-outline" id="btn-open-linksettings">🔗 링크 설정</button>
+    <button class="btn btn-outline" id="btn-export-sms">📩 문자발송 엑셀</button>
   </div>
 
   <!-- 명단 -->
@@ -274,6 +275,7 @@ let allStudents = [];
 let allBatches = [];
 let currentTab = '__all__';
 let baseUrl = 'https://knkscampusm.github.io/wait/index.html';
+let currentFilteredList = [];
 
 // ====== 모달 공통 ======
 function openModal(id) { document.getElementById(id).classList.add('show'); }
@@ -401,6 +403,37 @@ function todayDateStr() {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}`;
 }
+
+// ====== 문자발송 엑셀 내보내기 ======
+// 현재 화면에 필터링되어 보이는 명단 기준으로, 학생번호/학부모번호를 각각 한 줄씩 생성
+// (두 번호가 동일하면 한 번만 포함)
+function exportSmsExcel() {
+  if (!currentFilteredList.length) {
+    alert('내보낼 학생이 없습니다. (현재 탭/필터 조건을 확인해 주세요)');
+    return;
+  }
+  const rows = [];
+  let no = 1;
+  currentFilteredList.forEach(s => {
+    const numbers = [];
+    if (s.phone) numbers.push(s.phone);
+    if (s.parentPhone && s.parentPhone !== s.phone) numbers.push(s.parentPhone);
+    numbers.forEach(num => {
+      rows.push({ '번호': no++, '수험번호': s.sid || '', '이름': s.name || '', '연락처': num });
+    });
+  });
+  if (!rows.length) {
+    alert('연락처가 등록된 학생이 없습니다.');
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '문자발송');
+  const fname = `문자발송_${todayDateStr().replace('/', '')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+document.getElementById('btn-export-sms').addEventListener('click', exportSmsExcel);
 
 async function handleFile(file) {
   showMsg('upload-status', 'info', '엑셀을 읽는 중입니다…');
@@ -530,6 +563,8 @@ function renderTable() {
     if (statusFilter && statusFilter !== 'none' && s.status !== statusFilter) return false;
     return true;
   });
+
+  currentFilteredList = list;
 
   document.getElementById('count-pill').textContent = `${list.length}명`;
 
