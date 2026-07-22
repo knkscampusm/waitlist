@@ -169,7 +169,7 @@
           <tr>
             <th>수험번호</th>
             <th>이름</th>
-            <th>전형명</th>
+            <th>성별</th>
             <th>학생번호</th>
             <th>학부모 번호</th>
             <th>개인 링크</th>
@@ -470,6 +470,7 @@ async function handleFile(file) {
         parentPhone: String(row['학부모 연락처'] || '').trim(),
         group: String(row['그룹'] || '').trim(),
         admissionType: String(row['전형명'] || '').trim(),
+        gender: String(row['성별'] || '').trim(),
         stage: String(row['단계'] || '').trim(),
         applyPeriod: String(row['원서접수기간'] || '').trim(),
         note: String(row['비고상세'] || '').trim(),
@@ -511,7 +512,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
 });
 
 let defaultTabApplied = false;
-db.collection('waitlist_batches').orderBy('createdAt', 'asc').onSnapshot((snap) => {
+db.collection('waitlist_batches').orderBy('createdAt', 'desc').onSnapshot((snap) => {
   allBatches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (!defaultTabApplied) {
     const today = todayDateStr();
@@ -605,7 +606,7 @@ function renderTable() {
       <tr>
         <td>${s.sid || ''}</td>
         <td>${s.name || ''}</td>
-        <td>${s.admissionType || ''}</td>
+        <td>${s.gender || ''}</td>
         <td>${s.phone || ''}</td>
         <td>${s.parentPhone || ''}</td>
         <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
