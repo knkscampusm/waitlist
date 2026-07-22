@@ -462,7 +462,7 @@
     <div class="card">
       <div class="form-desc" style="border-top:none;padding-top:0;">
         <p>아래 설명을 확인하신 후, 수강을 희망하는 수업의 선생님을 선택해 주세요.</p>
-        <p>※ 수업은 최소 3개 이상 선택해 주시고, 수강하지 않을 과목은 <strong>'자습'</strong>을 선택해 주세요.<br>
+        <p id="classchoice-jaseup-note">※ 수업은 최소 3개 이상 선택해 주시고, 수강하지 않을 과목은 <strong>'자습'</strong>을 선택해 주세요.<br>
         (자습 선택은 수업 수에 포함되지 않습니다.)</p>
         <p>※ 국/수/영 수업은 입소 이후 2주 단위로 변경 신청을 받으며, 탐구 수업은 상시 변경 가능합니다. (행정실 문의)</p>
         <p>※ 수강 인원에 따라 일부 수업의 경우 라이브(Live) 수업으로 배정될 수 있습니다.</p>
@@ -548,6 +548,7 @@ let desiredDate = null;
 let noticeConfig = {};       // Firestore waitlist_config/notice
 let prefillStatus = null;    // 재접속 시 이전 응답 프리필용
 let studentClassLocked = false; // 관리자가 수업신청을 확정(잠금) 했는지
+let isFullScholarship = false;  // 전형명이 "전액 장학생"인 경우에만 자습 선택 가능
 
 // ====== 수학 충돌 그룹 ======
 // 같은 그룹끼리 동시 선택 불가
@@ -926,7 +927,7 @@ function showSectionById(id) {
   document.getElementById('progress-fill').style.width = pct + '%';
   const labelMap = { '0': '입소희망여부', 'date': '입소 희망일', 'classchoice': '필수 수업 신청', '1': '국어', '2': '수학', '3': '영어', '4': '탐구' };
   document.getElementById('progress-label').textContent = `${idx + 1} / ${flowOrder.length} — ${labelMap[id]}`;
-  document.getElementById('jaseup-banner').style.display = ['1', '2', '3', '4'].includes(id) ? '' : 'none';
+  document.getElementById('jaseup-banner').style.display = (['1', '2', '3', '4'].includes(id) && isFullScholarship) ? '' : 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -941,7 +942,7 @@ Object.entries(sectionMap).forEach(([secIdx, qids]) => {
     if (q.isTangg) {
       card.innerHTML = `
         <div class="question-label">${q.label} <span class="required">*</span></div>
-        <div style="margin-bottom:16px;">
+        <div id="tangg-jaseup-select" style="margin-bottom:16px;">
           <div style="font-size:13px;font-weight:500;color:#444;margin-bottom:10px;">탐구 자습 개수를 선택해 주세요 <span style="color:#c0392b">*</span></div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
@@ -1233,6 +1234,27 @@ function applyClassLockUI() {
   if (nextBtn) nextBtn.style.display = 'none';
 }
 
+// 전형명이 "전액 장학생"이 아니면 자습 관련 UI를 전부 숨기고, 탐구는 자습 0개(2과목)로 고정
+function applyScholarshipRestriction() {
+  if (isFullScholarship) return;
+  document.querySelectorAll('.jaseup-option').forEach(li => {
+    li.style.display = 'none';
+    const input = li.querySelector('input');
+    if (input) input.checked = false;
+  });
+  tanggSelected = tanggSelected.filter(v => v && !v.startsWith('자습'));
+  const jaseupSelect = document.getElementById('tangg-jaseup-select');
+  if (jaseupSelect) jaseupSelect.style.display = 'none';
+  const courseWrap = document.getElementById('tangg-course-wrap');
+  if (courseWrap) courseWrap.style.display = 'block';
+  if (tanggJaseupCount < 0) tanggJaseupCount = 0;
+  document.querySelectorAll('input[name="tangg-jaseup"]').forEach(r => { if (r.value === '0') r.checked = true; });
+  const note = document.getElementById('classchoice-jaseup-note');
+  if (note) note.innerHTML = '※ 모든 과목에서 수강을 희망하는 수업의 선생님을 선택해 주세요.';
+  updateTanggUI();
+  updateGlobalJaseupBanner();
+}
+
 // 재접속 시 이전에 선택했던 수업신청 내용을 화면에 복원
 function restoreClassAnswers(raw) {
   if (!raw) return;
@@ -1341,6 +1363,7 @@ function renderStatusOptions() {
     // - 입소여부 확정 + 수업신청도 확정(또는 대기연장/취소 확정): 완전 잠금, 완료 화면만 표시
     // - 입소여부 미확정: 이전 응답을 기본값으로 채운 채 처음부터 다시 진행 가능
     studentClassLocked = !!student.classLocked;
+    isFullScholarship = /전액.*장학/.test(student.admissionType || '');
 
     if (student.statusLocked) {
       if (student.status === 'enroll' && !student.classLocked) {
@@ -1350,6 +1373,7 @@ function renderStatusOptions() {
         flowOrder = ['classchoice', '1', '2', '3', '4'];
         document.getElementById('btn-prev-classchoice').style.display = 'none'; // 입소여부로 되돌아갈 수 없음
         restoreClassAnswers(student.classAnswersRaw);
+        applyScholarshipRestriction();
         document.getElementById('loading').classList.remove('show');
         document.getElementById('app-root').style.display = 'block';
         showSectionById('classchoice');
@@ -1370,6 +1394,7 @@ function renderStatusOptions() {
     }
     renderStatusOptions();
     restoreClassAnswers(student.classAnswersRaw);
+    applyScholarshipRestriction();
     applyClassLockUI();
 
     document.getElementById('loading').classList.remove('show');
