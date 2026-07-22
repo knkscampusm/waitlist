@@ -482,9 +482,10 @@
       <div style="margin-bottom:16px;font-size:14px;color:#555;">
         <strong id="notice-student-name">-</strong> 학생 (생년월일: <span id="notice-student-birth">-</span>)
       </div>
-      <div class="question-label">입소희망여부를 선택해 주세요 <span class="required">*</span></div>
+      <div class="question-label">입소 희망 여부를 선택해 주세요 <span class="required">*</span></div>
+      <div id="deadline-note" style="font-size:12px;color:#888;margin:-6px 0 14px;"></div>
       <ul class="options-list" id="status-options"></ul>
-      <div class="error-msg" id="err-status">입소희망여부를 선택해 주세요.</div>
+      <div class="error-msg" id="err-status">입소 희망 여부를 선택해 주세요.</div>
     </div>
     <div class="section-nav">
       <div></div>
@@ -1347,7 +1348,24 @@ updateTanggUI();
 document.getElementById('jaseup-banner').style.display = 'none';
 
 // ====== 상태 선택지 렌더링 ======
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function renderDeadlineNote() {
+  const el = document.getElementById('deadline-note');
+  const text = noticeConfig.deadlineNote;
+  if (!text) { el.innerHTML = ''; return; }
+  const idx = text.indexOf('까지');
+  if (idx === -1) {
+    el.innerHTML = escapeHtml(text);
+  } else {
+    const before = text.slice(0, idx);
+    const after = text.slice(idx);
+    el.innerHTML = `<strong style="color:#444;">${escapeHtml(before)}</strong>${escapeHtml(after)}`;
+  }
+}
 function renderStatusOptions() {
+  renderDeadlineNote();
   const ul = document.getElementById('status-options');
   ul.innerHTML = '';
   const opts = [
