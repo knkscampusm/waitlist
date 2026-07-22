@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>강남대성기숙 의대관 입소 안내 · 수업 신청</title>
+<title>대기자 관리 - 강남대성기숙 의대관</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-  // ====== Firebase 설정 (여기만 교체하면 됨) ======
+  // ====== Firebase 설정 (index.html과 동일한 프로젝트여야 함) ======
   const firebaseConfig = {
     apiKey: "AIzaSyBuQmV1fnv_ojIGReUvirBr_ZArQmQPaJM",
     authDomain: "campums-waiting-list.firebaseapp.com",
@@ -21,1481 +22,624 @@
 </script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     font-family: 'Noto Sans KR', -apple-system, sans-serif;
     background: #f0f0f0;
     color: #202124;
-    min-height: 100vh;
-    padding: 24px 16px 60px;
+    padding: 24px 16px 80px;
   }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 18px; }
 
-  .top-bar {
-    background: #6750a4;
-    height: 10px;
-    border-radius: 8px 8px 0 0;
-    margin-bottom: 0;
+  .action-bar { display:flex; gap:10px; margin-bottom: 18px; flex-wrap:wrap; }
+
+  .btn {
+    border:none; border-radius:6px; padding:9px 18px; font-size:13px; font-weight:500;
+    cursor:pointer; transition:background .15s;
   }
+  .btn-primary { background:#6750a4; color:#fff; }
+  .btn-primary:hover { background:#5a4496; }
+  .btn-outline { background:#fff; color:#6750a4; border:1px solid #6750a4; }
+  .btn-outline:hover { background:#f3f0ff; }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn:disabled { background:#ccc; color:#fff; cursor:not-allowed; }
 
-  .card {
+  .top-bar { background: #6750a4; height: 8px; border-radius: 8px 8px 0 0; }
+  .panel {
     background: #fff;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    padding: 24px;
-    margin-bottom: 12px;
-    max-width: 680px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .card.header-card {
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding-top: 28px;
-  }
-
-  .card:not(.header-card) {
-    border-radius: 8px;
-  }
-
-  .form-title {
-    font-size: 26px;
-    font-weight: 400;
-    margin-bottom: 12px;
-    color: #202124;
-  }
-
-  .form-desc {
-    font-size: 13px;
-    color: #444;
-    line-height: 1.7;
-    border-top: 1px solid #e0e0e0;
-    padding-top: 16px;
-  }
-
-  .form-desc p { margin-bottom: 6px; }
-  .form-desc strong { color: #c0392b; }
-
-  /* 자습 카운터 배너 */
-  .jaseup-banner {
-    max-width: 680px;
-    margin: 0 auto 12px;
-    background: #f3f0ff;
-    border: 1px solid #c8b8ff;
-    border-radius: 8px;
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 12px;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(103,80,164,0.12);
-  }
-
-  .jaseup-banner .label {
-    font-size: 14px;
-    color: #4a3b8c;
-    font-weight: 500;
-  }
-
-  .jaseup-count {
-    font-size: 22px;
-    font-weight: 700;
-    color: #6750a4;
-    min-width: 80px;
-    text-align: right;
-  }
-
-  .jaseup-count.at-limit { color: #c0392b; }
-
-  .jaseup-bar {
-    height: 4px;
-    background: #e0d8f7;
-    border-radius: 2px;
-    margin-top: 8px;
-    overflow: hidden;
-  }
-
-  .jaseup-bar-fill {
-    height: 100%;
-    background: #6750a4;
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-
-  .jaseup-bar-fill.at-limit { background: #c0392b; }
-
-  /* 문항 */
-  .question-label {
-    font-size: 15px;
-    font-weight: 500;
-    margin-bottom: 16px;
-    line-height: 1.5;
-  }
-
-  .question-label .required {
-    color: #c0392b;
-    margin-left: 2px;
-  }
-
-  .options-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .option-item {
-    display: flex;
-    align-items: center;
-    padding: 10px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s;
-    user-select: none;
-  }
-
-  .option-item:hover { background: #f8f5ff; }
-
-  .option-item input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    margin-right: 12px;
-    accent-color: #6750a4;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .option-item.jaseup-option input[type="radio"] {
-    accent-color: #888;
-  }
-
-  .option-item label {
-    font-size: 14px;
-    cursor: pointer;
-    flex: 1;
-    color: #333;
-  }
-
-  .option-item.jaseup-option label {
-    color: #666;
-    font-style: italic;
-  }
-
-  .option-item.jaseup-disabled {
-    opacity: 0.4;
-    pointer-events: none;
-  }
-
-  .option-item.tangg-disabled {
-    opacity: 0.35;
-    pointer-events: none;
-    text-decoration: line-through;
-  }
-
-  /* 기본 정보 입력 */
-  .input-group {
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 20px 24px;
     margin-bottom: 20px;
   }
+  .panel-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display:flex; align-items:center; gap:8px; }
+  .panel-title .badge { font-size:11px; font-weight:500; color:#6750a4; background:#f3f0ff; padding:2px 8px; border-radius:10px; }
 
-  .input-group label {
-    display: block;
-    font-size: 15px;
-    font-weight: 500;
-    margin-bottom: 8px;
+  label.field-label { display:block; font-size:13px; font-weight:500; color:#444; margin-bottom:6px; }
+  textarea, input[type=text], input[type=date], input[type=url] {
+    width:100%; border:1px solid #ddd; border-radius:6px; padding:9px 10px; font-size:13px;
+    font-family:inherit; outline:none; background:#fafafa;
   }
+  textarea:focus, input:focus { border-color:#6750a4; background:#fff; }
+  textarea { min-height:90px; resize:vertical; }
+  .field-row { margin-bottom:14px; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 
-  .input-group label .required { color: #c0392b; margin-left: 2px; }
-
-  .input-group input[type="text"],
-  .input-group input[type="date"] {
-    width: 100%;
-    border: none;
-    border-bottom: 1px solid #ccc;
-    padding: 8px 2px;
-    font-size: 15px;
-    outline: none;
-    background: transparent;
-    color: #202124;
-    transition: border-color 0.2s;
+  .upload-drop {
+    border:2px dashed #c8b8ff; border-radius:8px; padding:24px; text-align:center;
+    color:#888; font-size:13px; cursor:pointer; transition:.15s;
   }
+  .upload-drop:hover { background:#f8f5ff; border-color:#6750a4; }
+  .upload-drop.dragover { background:#f3f0ff; border-color:#6750a4; }
 
-  .input-group input:focus { border-bottom-color: #6750a4; }
+  .status-msg { font-size:12px; margin-top:10px; padding:8px 10px; border-radius:6px; display:none; }
+  .status-msg.show { display:block; }
+  .status-msg.ok { background:#eafaf0; color:#1e7e4a; }
+  .status-msg.err { background:#fdecea; color:#c0392b; }
+  .status-msg.info { background:#f3f0ff; color:#4a3b8c; }
 
-  /* 제출 버튼 */
-  .submit-wrap {
-    max-width: 680px;
-    margin: 20px auto 0;
-    display: flex;
-    justify-content: flex-end;
+  /* 탭 */
+  .tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:0; }
+  .tab-item {
+    padding:8px 16px; font-size:13px; font-weight:500; color:#888; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
   }
+  .tab-item:hover { color:#6750a4; }
+  .tab-item.active { color:#6750a4; border-bottom-color:#6750a4; font-weight:700; }
 
-  .btn-submit {
-    background: #6750a4;
-    color: #fff;
-    border: none;
-    padding: 12px 32px;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .toolbar input[type=text] { max-width:220px; }
+  .toolbar select {
+    border:1px solid #ddd; border-radius:6px; padding:8px 10px; font-size:13px; background:#fafafa;
   }
+  .count-pill { font-size:12px; color:#666; margin-left:auto; }
 
-  .btn-submit:hover { background: #5a4496; }
-  .btn-submit:disabled { background: #bbb; cursor: not-allowed; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { padding:9px 8px; text-align:left; border-bottom:1px solid #eee; white-space:nowrap; }
+  th { color:#888; font-weight:500; font-size:11.5px; position:sticky; top:0; background:#fff; }
+  tbody tr:hover { background:#faf9ff; }
 
-  /* 오류 메시지 */
-  .error-msg {
-    font-size: 12px;
-    color: #c0392b;
-    margin-top: 8px;
-    display: none;
+  .badge-status {
+    display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:10px;
   }
+  .badge-none { background:#eee; color:#888; }
+  .badge-enroll { background:#e3f6e9; color:#1e7e4a; }
+  .badge-extend { background:#fff4de; color:#a06b0f; }
+  .badge-cancel { background:#fdecea; color:#c0392b; }
+  .badge-class-done { background:#e9e3ff; color:#5a4496; }
+  .badge-class-none { background:#eee; color:#aaa; }
 
-  /* 완료 화면 */
-  #done-screen {
-    display: none;
-    max-width: 680px;
-    margin: 40px auto;
-    background: #fff;
-    border-radius: 8px;
-    padding: 40px 24px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  .table-scroll { overflow-x:auto; max-height:640px; overflow-y:auto; }
+
+  .modal-bg {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200;
+    align-items:center; justify-content:center; padding:20px;
   }
-
-  #done-screen h2 { font-size: 22px; color: #6750a4; margin-bottom: 12px; }
-  #done-screen p { color: #555; font-size: 14px; line-height: 1.7; }
-
-  .loading-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(255,255,255,0.8);
-    z-index: 999;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
+  .modal-bg.show { display:flex; }
+  .modal {
+    background:#fff; border-radius:10px; padding:24px; max-width:560px; width:100%;
+    max-height:84vh; overflow-y:auto; position:relative;
   }
-
-  .loading-overlay.show { display: flex; }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid #e0e0e0;
-    border-top-color: #6750a4;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-overlay p { font-size: 14px; color: #666; }
-
-  /* 섹션 */
-  .section-wrap { display: none; }
-  .section-wrap.active { display: block; }
-
-  .section-header {
-    max-width: 680px;
-    margin: 0 auto 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-title-bar {
-    background: #6750a4;
-    color: #fff;
-    font-size: 15px;
-    font-weight: 600;
-    padding: 10px 20px;
-    border-radius: 8px;
-    max-width: 680px;
-    margin: 0 auto 8px;
-    letter-spacing: 0.3px;
-  }
-
-  .section-nav {
-    max-width: 680px;
-    margin: 16px auto 0;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .btn-prev {
-    background: #fff;
-    color: #6750a4;
-    border: 1px solid #6750a4;
-    padding: 11px 28px;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .btn-next {
-    background: #6750a4;
-    color: #fff;
-    border: none;
-    padding: 11px 28px;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .btn-next:hover { background: #5a4496; }
-  .btn-prev:hover { background: #f3f0ff; }
-
-  /* 진행 표시 */
-  .progress-bar-wrap {
-    max-width: 680px;
-    margin: 0 auto 16px;
-    background: #e0d8f7;
-    border-radius: 4px;
-    height: 5px;
-    overflow: hidden;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: #6750a4;
-    border-radius: 4px;
-    transition: width 0.3s;
-  }
-  .progress-label {
-    max-width: 680px;
-    margin: 0 auto 6px;
-    font-size: 12px;
-    color: #888;
-    text-align: right;
-  }
+  .modal h3 { font-size:16px; margin-bottom:16px; }
+  .modal .row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; border-bottom:1px solid #f2f2f2; }
+  .modal .row .k { color:#888; }
+  .modal .close-x { position:absolute; top:18px; right:20px; cursor:pointer; color:#888; font-size:18px; }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <h1>📋 대기자 관리</h1>
+  <div class="subtitle">강남대성기숙 의대관 · 대기자 입소/수업신청 통합 관리</div>
 
-<!-- 로딩 -->
-<div class="loading-overlay show" id="loading">
-  <div class="spinner"></div>
-  <p id="loading-text">정보를 불러오는 중입니다…</p>
-</div>
-
-<!-- 링크 오류 화면 -->
-<div id="link-error" style="display:none;max-width:680px;margin:60px auto;text-align:center;padding:0 16px;">
-  <div class="card">
-    <h2 style="color:#c0392b;font-size:20px;margin-bottom:12px;">링크를 확인할 수 없습니다</h2>
-    <p style="color:#555;font-size:14px;line-height:1.7;">전달받으신 링크가 정확한지 다시 확인해 주세요.<br>문제가 계속되면 행정실로 문의해 주세요.</p>
+  <!-- 상단 액션 버튼 -->
+  <div class="action-bar">
+    <button class="btn btn-outline" id="btn-open-config">✏️ 안내문 편집</button>
+    <button class="btn btn-outline" id="btn-open-upload">📥 명단 업로드</button>
+    <button class="btn btn-outline" id="btn-open-linksettings">🔗 링크 설정</button>
+    <button class="btn btn-outline" id="btn-export-sms">📩 문자발송 엑셀</button>
   </div>
-</div>
 
-<!-- 헤더 카드 -->
-<div id="app-root" style="display:none;">
-<div style="max-width:680px;margin:0 auto;">
+  <!-- 명단 -->
   <div class="top-bar"></div>
+  <div class="panel">
+    <div class="panel-title">👥 대기자 명단 <span class="badge" id="live-badge">실시간</span></div>
+
+    <div class="tab-bar" id="tab-bar">
+      <div class="tab-item active" data-batch="__all__">전체</div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="이름 / 수험번호 검색">
+      <select id="filter-stage">
+        <option value="">전체 단계</option>
+      </select>
+      <select id="filter-status">
+        <option value="">전체 응답상태</option>
+        <option value="none">미응답</option>
+        <option value="enroll">입소 희망</option>
+        <option value="extend">대기 연장</option>
+        <option value="cancel">대기 취소</option>
+      </select>
+      <span class="count-pill" id="count-pill">0명</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>수험번호</th>
+            <th>이름</th>
+            <th>전형명</th>
+            <th>학생번호</th>
+            <th>학부모 번호</th>
+            <th>개인 링크</th>
+            <th>입소여부 응답</th>
+            <th>희망일</th>
+            <th>수업신청</th>
+          </tr>
+        </thead>
+        <tbody id="student-tbody">
+          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-<div class="card header-card">
-  <h1 class="form-title" id="notice-title">강남대성기숙 의대관<br>입소 안내</h1>
-  <div class="form-desc" id="notice-body">
-    <!-- 관리자 화면에서 편집한 안내문 내용이 여기 표시됩니다 -->
-  </div>
-</div>
 
-<!-- 진행 표시 -->
-<div class="progress-label" id="progress-label">1 / 5 — 인적사항</div>
-<div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:20%"></div></div>
-
-<!-- 자습 카운터 배너 -->
-<div class="jaseup-banner" id="jaseup-banner" style="display:none">
-  <div>
-    <div class="label">🛑 자습 선택 횟수 (최대 6개)</div>
-    <div class="jaseup-bar"><div class="jaseup-bar-fill" id="jaseup-bar-fill" style="width:0%"></div></div>
-  </div>
-  <div class="jaseup-count" id="jaseup-count">0 / 6</div>
-</div>
-
-<!-- 폼 -->
-<form id="main-form" novalidate>
-
-  <!-- 숨김: 학생 식별 정보 (Firestore에서 자동 로드, 화면 표시 안 함) -->
-  <input type="hidden" id="student-id">
-  <input type="hidden" id="student-name">
-  <input type="hidden" id="student-birth">
-
-  <!-- 섹션 0: 입소희망여부 -->
-  <div class="section-wrap active" id="section-0">
-    <div class="section-title-bar">📋 입소희망여부</div>
-    <div class="card">
-      <div style="margin-bottom:16px;font-size:14px;color:#555;">
-        <strong id="notice-student-name">-</strong> 학생 (생년월일: <span id="notice-student-birth">-</span>)
-      </div>
-      <div class="question-label">입소희망여부를 선택해 주세요 <span class="required">*</span></div>
-      <ul class="options-list" id="status-options"></ul>
-      <div class="error-msg" id="err-status">입소희망여부를 선택해 주세요.</div>
+<!-- 모달: 안내문 편집 -->
+<div class="modal-bg" id="modal-config">
+  <div class="modal">
+    <span class="close-x" data-close="modal-config">✕</span>
+    <h3>✏️ 안내문 편집</h3>
+    <div class="field-row">
+      <label class="field-label">제목 (HTML 가능, &lt;br&gt;로 줄바꿈)</label>
+      <input type="text" id="cfg-title" value="강남대성기숙 의대관&lt;br&gt;입소 안내">
     </div>
-    <div class="section-nav">
-      <div></div>
-      <button type="button" id="btn-next-status" class="btn-next">다음</button>
+    <div class="field-row">
+      <label class="field-label">본문 안내 (HTML 가능)</label>
+      <textarea id="cfg-body" style="min-height:140px;">정규시즌 입소 가능한 대기자 순번이 되어 안내 드립니다.&lt;br&gt;국/수/영 수업 선생님 선택 설문은 추후에 별도로 링크를 보내드릴 예정입니다.&lt;br&gt;&lt;br&gt;&lt;strong&gt;※현재 기숙사 1인실 여석이 없습니다. 다인실로 배정되며, 1인실을 희망하는 경우 입소 후 1인실 대기 가능합니다.&lt;/strong&gt;&lt;br&gt;※남학생 다인실은 4인실로 운영되고 있습니다.</textarea>
     </div>
-  </div>
-
-  <!-- 섹션 date: 입소 희망일 -->
-  <div class="section-wrap" id="section-date">
-    <div class="section-title-bar">📅 입소 희망일</div>
-    <div class="card">
-      <div class="question-label">입소 희망하시는 날짜를 입력하여 주세요 <span class="required">*</span></div>
-      <div style="font-size:13px;color:#888;margin-bottom:14px;">🚩 제출해주신 날짜 기준으로 교습비를 안내드립니다.</div>
-      <div class="input-group" style="margin-bottom:0">
-        <input type="date" id="desired-date">
-      </div>
-    </div>
-    <div class="error-msg" id="err-date" style="max-width:680px;margin:0 auto 8px;">입소 희망일을 입력해 주세요.</div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-date">← 이전</button>
-      <button type="button" id="btn-next-date" class="btn-next">필수 수업 신청</button>
-    </div>
-  </div>
-
-  <!-- 섹션 classchoice: 필수 수업 신청 여부 -->
-  <div class="section-wrap" id="section-classchoice">
-    <div class="section-title-bar">📚 필수 수업 신청</div>
-    <div class="card">
-      <div class="form-desc" style="border-top:none;padding-top:0;">
-        <p>아래 설명을 확인하신 후, 수강을 희망하는 수업의 선생님을 선택해 주세요.</p>
-        <p id="classchoice-jaseup-note">※ 수업은 최소 3개 이상 선택해 주시고, 수강하지 않을 과목은 <strong>'자습'</strong>을 선택해 주세요.<br>
-        (자습 선택은 수업 수에 포함되지 않습니다.)</p>
-        <p>※ 국/수/영 수업은 입소 이후 2주 단위로 변경 신청을 받으며, 탐구 수업은 상시 변경 가능합니다. (행정실 문의)</p>
-        <p>※ 수강 인원에 따라 일부 수업의 경우 라이브(Live) 수업으로 배정될 수 있습니다.</p>
+    <div class="field-row">
+      <label class="field-label">입소 희망일 선택 가능 범위 (날짜만 입력하면 아래 문구가 자동으로 채워져요)</label>
+      <div class="field-grid">
+        <input type="date" id="cfg-enroll-start">
+        <input type="date" id="cfg-enroll-end">
       </div>
     </div>
-    <div class="card">
-      <div class="question-label">필수 선택 수업 신청 여부 <span class="required">*</span></div>
-      <ul class="options-list" id="classchoice-options">
-        <li class="option-item">
-          <input type="radio" name="classchoice" id="classchoice_now" value="now">
-          <label for="classchoice_now">필수 선택 수업 지금 신청하기</label>
-        </li>
-        <li class="option-item">
-          <input type="radio" name="classchoice" id="classchoice_later" value="later">
-          <label for="classchoice_later">학생과 상의 후 신청할게요</label>
-        </li>
-      </ul>
-      <div class="error-msg" id="err-classchoice">신청 여부를 선택해 주세요.</div>
+    <div class="field-row">
+      <label class="field-label">① 입소 희망 문구 <span style="font-weight:400;color:#aaa;">(자동생성됨, 직접 수정도 가능)</span></label>
+      <input type="text" id="cfg-enroll" value="7/24(금) ~ 7/26(일) 사이에 입소를 희망합니다.">
     </div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-classchoice">← 이전</button>
-      <button type="button" class="btn-next" id="btn-next-classchoice">다음</button>
+    <div class="field-row">
+      <label class="field-label">② 대기 연장 문구</label>
+      <input type="text" id="cfg-extend" value="현재는 입소를 희망하지 않으며, 대기를 연장합니다.">
     </div>
+    <div class="field-row">
+      <label class="field-label">③ 대기 취소 문구</label>
+      <input type="text" id="cfg-cancel" value="입소를 희망하지 않으며, 대기를 취소합니다.">
+    </div>
+    <div class="field-row">
+      <label class="field-label">응답 마감 안내 (참고용, 문구에 자유롭게 활용)</label>
+      <input type="text" id="cfg-deadline" placeholder="예) 7/22(수) 오전 9시까지 응답 부탁드립니다.">
+    </div>
+    <button class="btn btn-primary" id="btn-save-config">저장</button>
+    <div class="status-msg" id="config-status"></div>
   </div>
-
-  <!-- 섹션 1: 국어 -->
-  <div class="section-wrap" id="section-1">
-    <div class="section-title-bar">📘 국어</div>
-    <div id="wrap-1"></div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-1">← 이전</button>
-      <button type="button" class="btn-next" id="btn-next-1">다음 → 수학</button>
-    </div>
-  </div>
-
-  <!-- 섹션 2: 수학 -->
-  <div class="section-wrap" id="section-2">
-    <div class="section-title-bar">📗 수학</div>
-    <div id="wrap-2"></div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-2">← 국어</button>
-      <button type="button" class="btn-next" id="btn-next-2">다음 → 영어</button>
-    </div>
-  </div>
-
-  <!-- 섹션 3: 영어 -->
-  <div class="section-wrap" id="section-3">
-    <div class="section-title-bar">📙 영어</div>
-    <div id="wrap-3"></div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-3">← 수학</button>
-      <button type="button" class="btn-next" id="btn-next-3">다음 → 탐구</button>
-    </div>
-  </div>
-
-  <!-- 섹션 4: 탐구 -->
-  <div class="section-wrap" id="section-4">
-    <div class="section-title-bar">📕 탐구</div>
-    <div id="wrap-4"></div>
-    <div class="section-nav">
-      <button type="button" class="btn-prev" id="btn-prev-4">← 영어</button>
-      <button type="submit" class="btn-next btn-submit" id="btn-submit">제출하기</button>
-    </div>
-  </div>
-</form>
-
-<!-- 완료 화면 -->
-<div id="done-screen">
-  <h2 id="done-title">✅ 신청이 완료되었습니다</h2>
-  <p id="done-desc">수업 신청이 정상적으로 접수되었습니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.</p>
 </div>
 
-</div><!-- /app-root -->
+<!-- 모달: 명단 업로드 -->
+<div class="modal-bg" id="modal-upload">
+  <div class="modal">
+    <span class="close-x" data-close="modal-upload">✕</span>
+    <h3>📥 대기자 명단 업로드</h3>
+    <div class="upload-drop" id="drop-zone">
+      엑셀 파일을 끌어다 놓거나 클릭해서 선택하세요 (.xlsx)<br>
+      <span style="font-size:11.5px;color:#aaa;">업로드하면 오늘 날짜의 새 탭이 생성됩니다. 기존 학생은 응답 데이터(입소여부/수업신청)를 유지한 채 기본정보만 갱신됩니다.</span>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none;">
+    </div>
+    <div class="status-msg" id="upload-status"></div>
+  </div>
+</div>
+
+<!-- 모달: 링크 설정 -->
+<div class="modal-bg" id="modal-linksettings">
+  <div class="modal">
+    <span class="close-x" data-close="modal-linksettings">✕</span>
+    <h3>🔗 개인 링크 기본 주소</h3>
+    <div class="field-row">
+      <input type="url" id="base-url" value="https://knkscampusm.github.io/wait/index.html" placeholder="https://knkscampusm.github.io/wait/index.html">
+    </div>
+    <div style="font-size:12px;color:#888;">학생별 링크 = 이 주소 + <code>?c=수험번호</code> (수험번호가 짧아서 별도 단축 서비스 없이 그대로 사용합니다)</div>
+    <button class="btn btn-primary" id="btn-save-linksettings" style="margin-top:14px;">저장</button>
+    <div class="status-msg" id="link-status"></div>
+  </div>
+</div>
+
+<!-- 모달: 수업신청 상세 -->
+<div class="modal-bg" id="modal-detail">
+  <div class="modal">
+    <span class="close-x" data-close="modal-detail">✕</span>
+    <h3 id="modal-name">학생 상세</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
 
 <script>
-// ====== 설정 ======
-const JASEUP_MAX = 6;
-
-// ====== 전역 상태 ======
-let flowOrder = ['0'];
-let waitlistStatus = null;   // 'enroll' | 'extend' | 'cancel'
-let desiredDate = null;
-let noticeConfig = {};       // Firestore waitlist_config/notice
-let prefillStatus = null;    // 재접속 시 이전 응답 프리필용
-let studentClassLocked = false; // 관리자가 수업신청을 확정(잠금) 했는지
-let isFullScholarship = false;  // 전형명이 "전액 장학생"인 경우에만 자습 선택 가능
-
-// ====== 수학 충돌 그룹 ======
-// 같은 그룹끼리 동시 선택 불가
-const MATH_CONFLICT_PAIRS = [
-  ['강호길 선생님(미적분)', '신현식 선생님'],
-  ['김도혁 선생님(미적분)', '김치헌 선생님'],
-];
-
-function isMathConflict(q4val, q6val) {
-  if (!q4val || !q6val || q4val === '자습' || q6val === '자습') return false;
-  return MATH_CONFLICT_PAIRS.some(([m6, m4]) => q6val === m6 && q4val === m4);
-}
-
-function updateMathConflict() {
-  const q4val = document.querySelector('input[name="q4"]:checked')?.value;
-  const q6val = document.querySelector('input[name="q6"]:checked')?.value;
-
-  // q6 선택지 비활성화
-  document.querySelectorAll('input[name="q6"]').forEach(radio => {
-    if (radio.value === '자습') return;
-    const li = radio.closest('li');
-    const blocked = q4val && MATH_CONFLICT_PAIRS.some(([m6, m4]) => radio.value === m6 && q4val === m4);
-    if (blocked && !radio.checked) {
-      li.classList.add('tangg-disabled'); radio.disabled = true;
-    } else if (li.classList.contains('tangg-disabled')) {
-      li.classList.remove('tangg-disabled'); radio.disabled = false;
-    }
-  });
-
-  // q4 선택지 비활성화
-  document.querySelectorAll('input[name="q4"]').forEach(radio => {
-    if (radio.value === '자습') return;
-    const li = radio.closest('li');
-    const blocked = q6val && MATH_CONFLICT_PAIRS.some(([m6, m4]) => q6val === m6 && radio.value === m4);
-    if (blocked && !radio.checked) {
-      li.classList.add('tangg-disabled'); radio.disabled = true;
-    } else if (li.classList.contains('tangg-disabled')) {
-      li.classList.remove('tangg-disabled'); radio.disabled = false;
-    }
-  });
-}
-
-// ====== 탐구 그룹 ======
-// 동일 선생님이 복수 그룹에 있는 경우 __C / __D suffix로 내부 구분
-// 표시할 때는 displayLabel() 함수로 suffix 제거
-const TANGG_GROUPS = {
-  '물리학Ⅰ / 방인혁 선생님':            'C',
-
-  '생명과학Ⅰ / 손윤희 선생님':          'C',
-  '지구과학Ⅰ / 김진영 선생님(LIVE 수업)':    'C',
-  '지구과학Ⅰ / 이정준 선생님':          'C',
-  '사회문화 / 홍재영 선생님':            'C',
-  '한국지리 / 전성오 선생님':            'C',
-  '경제 / 이예섭':                       'C',
-  '물리학Ⅰ / 김훈 선생님':              'D',
-
-  '생명과학Ⅰ / 정석준 선생님(LIVE 수업)':    'D',
-  '지구과학Ⅰ / 양길봉 선생님':          'D',
-  '지구과학Ⅰ / 이훈식 선생님':          'D',
-
-  '동아시아사 / 고진범 선생님':          'D',
-  '세계사 / 전병훈 선생님':              'E',
-  '물리학Ⅱ / 고재근 선생님':            'E',
-  '생명과학Ⅱ / 최한근 선생님':          'F',
-  '사회문화 / 이형수 선생님__G':         'G',
-  '정치와 법 / 최여름 선생님':           'G',
-  '윤리와사상 / 임현철 선생님':          'G',
-  '생활과 윤리 / 정수환 선생님__G':      'G',
-  '화학Ⅱ / 최홍석 선생님':              'G',
-  '세계지리 / 박동수 선생님':            'H',
-  '지구과학Ⅱ / 이남철 선생님':          'H',
-  // MULTI: 복수 그룹 소속 (배열로 저장)
-  '화학Ⅰ / 우승석 선생님__MULTI':        ['C','D'],
-  '생명과학Ⅰ / 정윤제 선생님__MULTI':    ['C','D'],
-  '사회문화 / 이형수 선생님__MULTI':      ['D','G'],
-  '생활과 윤리 / 정수환 선생님__MULTI':   ['D','G'],
+const Q_LABELS = {
+  q1: '국어(독서)', q2: '국어(문학)', q3: '국어선택', q4: '수학Ⅰ',
+  q5: '수학Ⅱ', q6: '수학선택', q7: '영어', q8: '탐구'
 };
+const STATUS_LABEL = { enroll: '입소 희망', extend: '대기 연장', cancel: '대기 취소' };
 
-// suffix 제거해서 화면에 표시할 레이블 반환
-function displayLabel(val) {
-  return val.replace(/__[A-Za-z]+$/, '');
-}
+let allStudents = [];
+let allBatches = [];
+let currentTab = '__all__';
+let baseUrl = 'https://knkscampusm.github.io/wait/index.html';
+let currentFilteredList = [];
 
-// ====== 문항 정의 ======
-const questions = [
-  {
-    id: 'q1',
-    label: '1. 수강 희망하는 국어(독서) 선생님을 선택해주세요.',
-    options: ['이정수 선생님','류재민 선생님(LIVE 수업 배정될 수 있음)','박금병 선생님','이창훈 선생님','홍지운 선생님','자습']
-  },
-  {
-    id: 'q2',
-    label: '2. 수강 희망하는 국어(문학) 선생님을 선택해 주세요.',
-    options: ['고광수 선생님','이승모 선생님(LIVE 수업 배정될 수 있음)','신동민 선생님','김한솔 선생님','한승 선생님','자습']
-  },
-  {
-    id: 'q3',
-    label: '3. 수강 희망하는 국어 선택(언어와매체/화법과 작문) 선생님을 선택해 주세요.',
-    options: ['백환 선생님(언어와매체)','윤권철 선생님(언어와매체)','이정일 선생님(언어와매체)','윤민 선생님(언어와매체)','김성준 선생님(화법과작문)','자습']
-  },
-  {
-    id: 'q4',
-    label: '4. 수강 희망하는 수학(수학Ⅰ) 선생님을 선택해 주세요.',
-    options: ['송준석 선생님','황지현 선생님','권현석 선생님(LIVE 수업 배정될 수 있음)','김치헌 선생님','신현식 선생님','자습']
-  },
-  {
-    id: 'q5',
-    label: '5. 수강 희망하는 수학(수학Ⅱ) 선생님을 선택해 주세요.',
-    options: ['손승연 선생님(LIVE 수업 배정될 수 있음)','신민우 선생님','백종석 선생님','이상훈 선생님','자습']
-  },
-  {
-    id: 'q6',
-    label: '6. 수강 희망하는 수학(미적분/확률과통계) 선생님을 선택해 주세요.',
-    options: ['김범준 선생님(미적분/LIVE 수업 배정될 수 있음)','강호길 선생님(미적분)','이정환 선생님(미적분)','이종완 선생님(미적분)','김도혁 선생님(미적분)','은종찬 선생님(확률과 통계)','자습']
-  },
-  {
-    id: 'q7',
-    label: '7. 수강 희망하는 영어 선생님을 선택해 주세요.',
-    options: ['김대순 선생님','지윤경 선생님','류지수 선생님','최은정 선생님','고연승 선생(LIVE 수업 배정될 수 있음)','오태수 선생님','자습']
-  },
-  {
-    id: 'q8',
-    label: '8. 수강 희망하는 탐구 선생님을 선택해 주세요.',
-    isTangg: true,
-    options: [
-      // 물리학Ⅰ
-      '물리학Ⅰ / 방인혁 선생님',
-      '물리학Ⅰ / 김훈 선생님',
-      // 화학Ⅰ
-      '화학Ⅰ / 우승석 선생님__MULTI',
-      // 생명과학Ⅰ
-      '생명과학Ⅰ / 정윤제 선생님__MULTI',
-      '생명과학Ⅰ / 손윤희 선생님',
-      '생명과학Ⅰ / 정석준 선생님(LIVE 수업)',
-      // 지구과학Ⅰ
-      '지구과학Ⅰ / 김진영 선생님(LIVE 수업)',
-      '지구과학Ⅰ / 이정준 선생님',
-      '지구과학Ⅰ / 양길봉 선생님',
-      '지구과학Ⅰ / 이훈식 선생님',
-      // 물리학Ⅱ
-      '물리학Ⅱ / 고재근 선생님',
-      // 화학Ⅱ
-      '화학Ⅱ / 최홍석 선생님',
-      // 생명과학Ⅱ
-      '생명과학Ⅱ / 최한근 선생님',
-      // 지구과학Ⅱ
-      '지구과학Ⅱ / 이남철 선생님',
-      // 나머지 가나다순
-      '경제 / 이예섭',
-      '동아시아사 / 고진범 선생님',
-      '사회문화 / 홍재영 선생님',
-      '사회문화 / 이형수 선생님__MULTI',
-      '생활과 윤리 / 정수환 선생님__MULTI',
-      '세계사 / 전병훈 선생님',
-      '세계지리 / 박동수 선생님',
-      '윤리와사상 / 임현철 선생님',
-      '정치와 법 / 최여름 선생님',
-      '한국지리 / 전성오 선생님',
-    ]
-  }
-];
-
-// ====== 탐구 충돌 로직 ======
-function parseOption(val) {
-  if (!val || val.startsWith('자습')) return { subject: null, teacher: null };
-  const clean = val.replace(/__[A-Za-z]+$/, '');
-  const parts = clean.split(' / ');
-  if (parts.length > 1) return { subject: parts[0].trim(), teacher: parts[1].trim() };
-  return { subject: null, teacher: parts[0].trim() };
-}
-
-function getGroups(val) {
-  const g = TANGG_GROUPS[val];
-  if (!g) return [];
-  return Array.isArray(g) ? g : [g];
-}
-
-// MULTI 선택지를 실제 충돌 없는 그룹으로 resolve
-function resolveMulti(val) {
-  if (!val.endsWith('__MULTI')) return val;
-  const groups = TANGG_GROUPS[val]; // ['C','D'] or ['D','G']
-  // 이미 선택된 항목들의 그룹
-  const usedGroups = tanggSelected
-    .filter(s => s && !s.startsWith('자습') && s !== val)
-    .flatMap(s => getGroups(s));
-  // 충돌 없는 첫 번째 그룹 선택
-  const available = groups.filter(g => !usedGroups.includes(g));
-  if (available.length === 0) return val; // 모두 충돌 (차단됨)
-  // val의 __MULTI를 __그룹 으로 교체
-  return val.replace('__MULTI', '__' + available[0]);
-}
-
-// 선택 목록 내 모든 MULTI 항목을 현재 상태 기준으로 resolve
-function resolveAllMulti() {
-  // MULTI가 아닌 항목들의 그룹을 먼저 파악
-  for (let i = 0; i < tanggSelected.length; i++) {
-    if (!tanggSelected[i] || !tanggSelected[i].endsWith('__MULTI')) continue;
-    const val = tanggSelected[i];
-    const groups = TANGG_GROUPS[val];
-    // 다른 항목(이미 resolved된)의 그룹
-    const otherGroups = tanggSelected
-      .filter((s, idx) => idx !== i && s && !s.startsWith('자습'))
-      .flatMap(s => getGroups(s));
-    const available = groups.filter(g => !otherGroups.includes(g));
-    if (available.length > 0) {
-      // resolve 가능 → 확정
-      tanggSelected[i] = val.replace('__MULTI', '__' + available[0]);
-    }
-    // available이 없으면 MULTI 유지 (차단 상태, 사실상 발생 안 함)
-  }
-}
-
-function isTanggConflict(a, b) {
-  if (!a || !b) return false;
-  if (a.startsWith('자습') || b.startsWith('자습')) return false;
-  const pa = parseOption(a);
-  const pb = parseOption(b);
-  // 같은 선생님 → 무조건 충돌
-  if (pa.teacher && pb.teacher && pa.teacher === pb.teacher) return true;
-  // 같은 과목 → 무조건 충돌
-  if (pa.subject && pb.subject && pa.subject === pb.subject) return true;
-  // 그룹 체크
-  const ga = getGroups(a);
-  const gb = getGroups(b);
-  if (ga.length === 0 || gb.length === 0) return false;
-  // ga, gb 중 충돌 안 되는 조합(g1 != g2)이 하나라도 있으면 → 허용
-  for (const g1 of ga) {
-    for (const g2 of gb) {
-      if (g1 !== g2) return false;
-    }
-  }
-  return true;
-}
-
-// ====== 탐구 선택 상태 ======
-// q8은 checkbox 2개 선택 방식
-// 선택값 저장
-let tanggSelected = []; // 과목 선택 (자습 제외)
-let tanggJaseupCount = -1; // -1: 미선택, 0/1/2: 자습 개수
-
-function getTanggAllowedCount() {
-  if (tanggJaseupCount === 2) return 0;
-  if (tanggJaseupCount === 1) return 1;
-  if (tanggJaseupCount === 0) return 2;
-  return -1; // 미선택
-}
-
-function updateTanggUI() {
-  const allowed = getTanggAllowedCount();
-  const courseCount = tanggSelected.length;
-
-  document.querySelectorAll('input[data-tangg="1"]').forEach(cb => {
-    const val = cb.value;
-    const li = cb.closest('li');
-    const isSelected = val.endsWith('__MULTI')
-      ? tanggSelected.some(v => v.startsWith(val.replace('__MULTI', '__')))
-      : tanggSelected.includes(val);
-    cb.checked = isSelected;
-
-    if (isSelected) {
-      li.classList.remove('tangg-disabled'); cb.disabled = false; return;
-    }
-    // 자습 개수 미선택 시 전부 비활성
-    if (allowed === -1) {
-      li.classList.add('tangg-disabled'); cb.disabled = true; return;
-    }
-    // 자습 2개: 과목 선택 불가
-    if (allowed === 0) {
-      li.classList.add('tangg-disabled'); cb.disabled = true; return;
-    }
-    // 이미 최대 선택
-    if (courseCount >= allowed) {
-      li.classList.add('tangg-disabled'); cb.disabled = true; return;
-    }
-    // 충돌
-    const conflictWith = tanggSelected.find(s => isTanggConflict(s, val));
-    if (conflictWith) {
-      li.classList.add('tangg-disabled'); cb.disabled = true; return;
-    }
-    li.classList.remove('tangg-disabled'); cb.disabled = false;
-  });
-
-  // 선택 현황
-  const statusEl = document.getElementById('tangg-status');
-  if (statusEl) {
-    let txt = '';
-    if (allowed === 0) {
-      txt = '탐구 자습 2개';
-    } else if (allowed === 1) {
-      txt = courseCount === 1 ? `${displayLabel(tanggSelected[0])} + 자습 1개 ✓` : '탐구 1과목을 선택해 주세요';
-    } else if (allowed === 2) {
-      if (courseCount === 0) txt = '탐구 2과목을 선택해 주세요';
-      else if (courseCount === 1) txt = `${displayLabel(tanggSelected[0])} 선택됨 → 1과목 더 선택`;
-      else txt = `${displayLabel(tanggSelected[0])} + ${displayLabel(tanggSelected[1])} ✓`;
-    }
-    statusEl.textContent = txt;
-    statusEl.style.color = isTanggComplete() ? '#2d7a2d' : '#6750a4';
-  }
-}
-
-function isTanggComplete() {
-  if (tanggJaseupCount === -1) return false;
-  if (tanggJaseupCount === 2) return true;
-  if (tanggJaseupCount === 1) return tanggSelected.length === 1;
-  if (tanggJaseupCount === 0) return tanggSelected.length === 2;
-  return false;
-}
-
-function onTanggClick(val) {
-  const existingIdx = tanggSelected.findIndex(v => {
-    if (v === val) return true;
-    if (val.endsWith('__MULTI')) {
-      const base = val.replace('__MULTI', '');
-      return v.startsWith(base + '__');
-    }
-    return false;
-  });
-  if (existingIdx !== -1) {
-    tanggSelected.splice(existingIdx, 1);
-    resolveAllMulti();
-  } else {
-    tanggSelected.push(val);
-    resolveAllMulti();
-  }
-  updateTanggUI();
-  // 자습 카운터 업데이트 (탐구 자습은 별도 카운트 안 함 — q1~q7만)
-  updateGlobalJaseupBanner();
-  clearError('q8');
-}
-
-// ====== 섹션 구조 ======
-// 섹션별 문항 매핑
-const sectionMap = {
-  1: ['q1','q2','q3'],       // 국어
-  2: ['q4','q5','q6'],       // 수학
-  3: ['q7'],                  // 영어
-  4: ['q8'],                  // 탐구
-};
-
-let currentSection = '0';
-
-function goNext(sectionIdx) {
-  const qids = sectionMap[sectionIdx];
-  let valid = true;
-  for (const qid of qids) {
-    const q = questions.find(q => q.id === qid);
-    if (q.isTangg) {
-      if (tanggSelected.length < 2) {
-        document.getElementById('err-' + qid).style.display = 'block';
-        document.getElementById('list-' + qid).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false; break;
-      }
-    } else {
-      const checked = document.querySelector(`input[name="${qid}"]:checked`);
-      if (!checked) {
-        document.getElementById('err-' + qid).style.display = 'block';
-        if (valid) document.getElementById('list-' + qid).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false; break;
-      }
-    }
-  }
-  if (!valid) return;
-  showSectionById(String(sectionIdx + 1));
-}
-
-function goPrev(sectionIdx) {
-  showSectionById(String(sectionIdx - 1));
-}
-
-function showSectionById(id) {
-  document.querySelectorAll('.section-wrap').forEach(el => el.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
-  currentSection = id;
-  const idx = flowOrder.indexOf(id);
-  const pct = ((idx + 1) / flowOrder.length) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  const labelMap = { '0': '입소희망여부', 'date': '입소 희망일', 'classchoice': '필수 수업 신청', '1': '국어', '2': '수학', '3': '영어', '4': '탐구' };
-  document.getElementById('progress-label').textContent = `${idx + 1} / ${flowOrder.length} — ${labelMap[id]}`;
-  document.getElementById('jaseup-banner').style.display = (['1', '2', '3', '4'].includes(id) && isFullScholarship) ? '' : 'none';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ====== 문항 렌더링 ======
-Object.entries(sectionMap).forEach(([secIdx, qids]) => {
-  const wrap = document.getElementById('wrap-' + secIdx);
-  qids.forEach(qid => {
-    const q = questions.find(item => item.id === qid);
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    if (q.isTangg) {
-      card.innerHTML = `
-        <div class="question-label">${q.label} <span class="required">*</span></div>
-        <div id="tangg-jaseup-select" style="margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:500;color:#444;margin-bottom:10px;">탐구 자습 개수를 선택해 주세요 <span style="color:#c0392b">*</span></div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="0" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 0개 (탐구 2과목)
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="1" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 1개 (탐구 1과목)
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="2" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 2개 (탐구 0과목)
-            </label>
-          </div>
-        </div>
-        <div id="tangg-course-wrap" style="display:none;">
-          <div id="tangg-status" style="font-size:13px;margin-bottom:12px;color:#6750a4;min-height:18px;"></div>
-          <ul class="options-list" id="list-${q.id}"></ul>
-        </div>
-        <div class="error-msg" id="err-${q.id}">탐구 자습 개수 및 선생님을 선택해 주세요.</div>
-      `;
-      const ul = card.querySelector('#list-' + q.id);
-      q.options.forEach((opt, optIdx) => {
-        const isJaseupOpt = opt.startsWith('자습');
-        const li = document.createElement('li');
-        li.className = 'option-item' + (isJaseupOpt ? ' jaseup-option' : '');
-        li.innerHTML = `
-          <input type="checkbox" data-tangg="1" id="${q.id}_${optIdx}" value="${opt}">
-          <label for="${q.id}_${optIdx}">${displayLabel(opt)}</label>
-        `;
-        const cb = li.querySelector('input');
-        cb.style.cssText = 'accent-color:#6750a4;width:18px;height:18px;margin-right:12px;flex-shrink:0;cursor:pointer;';
-        li.addEventListener('click', () => {
-          if (cb.disabled) return;
-          onTanggClick(opt);
-        });
-        ul.appendChild(li);
-      });
-      // 자습 개수 라디오 이벤트
-      card.querySelectorAll('input[name="tangg-jaseup"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-          tanggJaseupCount = parseInt(radio.value);
-          tanggSelected = tanggSelected.filter(v => v && !v.startsWith('자습'));
-          // 자습 0개면 과목 wrap 표시, 2개면 숨김
-          const courseWrap = document.getElementById('tangg-course-wrap');
-          courseWrap.style.display = tanggJaseupCount === 2 ? 'none' : 'block';
-          updateTanggUI();
-          updateGlobalJaseupBanner();
-          clearError('q8');
-        });
-      });
-    } else {
-      card.innerHTML = `
-        <div class="question-label">${q.label} <span class="required">*</span></div>
-        <ul class="options-list" id="list-${q.id}"></ul>
-        <div class="error-msg" id="err-${q.id}">선생님을 선택해 주세요.</div>
-      `;
-      const ul = card.querySelector('#list-' + q.id);
-      q.options.forEach((opt, optIdx) => {
-        const isJaseup = opt === '자습';
-        const li = document.createElement('li');
-        li.className = 'option-item' + (isJaseup ? ' jaseup-option' : '');
-        li.dataset.qid = q.id;
-        li.dataset.jaseup = isJaseup ? '1' : '0';
-        li.innerHTML = `
-          <input type="radio" name="${q.id}" id="${q.id}_${optIdx}" value="${opt}" ${isJaseup ? 'data-jaseup="1"' : ''}>
-          <label for="${q.id}_${optIdx}">${opt}</label>
-        `;
-        li.addEventListener('click', () => {
-          const radio = li.querySelector('input[type="radio"]');
-          if (radio.disabled) return;
-          radio.checked = true;
-          onSelectionChange(q.id);
-        });
-        ul.appendChild(li);
-      });
-    }
-    wrap.appendChild(card);
-  });
+// ====== 모달 공통 ======
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(el => {
+  el.addEventListener('click', () => closeModal(el.dataset.close));
+});
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', (e) => { if (e.target === bg) closeModal(bg.id); });
 });
 
-// ====== 자습 카운터 (q1~q7) ======
-function getJaseupCount() {
-  return document.querySelectorAll('input[data-jaseup="1"]:checked').length;
+document.getElementById('btn-open-config').addEventListener('click', () => openModal('modal-config'));
+document.getElementById('btn-open-upload').addEventListener('click', () => openModal('modal-upload'));
+document.getElementById('btn-open-linksettings').addEventListener('click', () => openModal('modal-linksettings'));
+
+function showMsg(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = 'status-msg show ' + type;
+  el.textContent = text;
+  setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-function getTotalJaseupCount() {
-  // q1~q7 자습 + 탐구 자습 (미선택=-1이면 0으로)
-  const base = document.querySelectorAll('input[data-jaseup="1"]:checked').length;
-  const tangg = tanggJaseupCount >= 0 ? tanggJaseupCount : 0;
-  return base + tangg;
-}
-
-function updateGlobalJaseupBannerWithTangg() {
-  const count = getTotalJaseupCount();
-  const el = document.getElementById('jaseup-count');
-  const fill = document.getElementById('jaseup-bar-fill');
-  el.textContent = `${count} / ${JASEUP_MAX}`;
-  const pct = Math.min((count / JASEUP_MAX) * 100, 100);
-  fill.style.width = pct + '%';
-  if (count >= JASEUP_MAX) {
-    el.classList.add('at-limit');
-    fill.classList.add('at-limit');
-  } else {
-    el.classList.remove('at-limit');
-    fill.classList.remove('at-limit');
-  }
-}
-
-function updateGlobalJaseupBanner() {
-  const count = getTotalJaseupCount();
-  const el = document.getElementById('jaseup-count');
-  const fill = document.getElementById('jaseup-bar-fill');
-  el.textContent = `${count} / ${JASEUP_MAX}`;
-  const pct = Math.min((count / JASEUP_MAX) * 100, 100);
-  fill.style.width = pct + '%';
-  if (count >= JASEUP_MAX) {
-    el.classList.add('at-limit');
-    fill.classList.add('at-limit');
-  } else {
-    el.classList.remove('at-limit');
-    fill.classList.remove('at-limit');
-  }
-  // q1~q7 자습 비활성화
-  document.querySelectorAll('.jaseup-option').forEach(li => {
-    const radio = li.querySelector('input[type="radio"]');
-    if (!radio) return;
-    if (count >= JASEUP_MAX && !radio.checked) {
-      li.classList.add('jaseup-disabled'); radio.disabled = true;
-    } else {
-      li.classList.remove('jaseup-disabled'); radio.disabled = false;
+// ====== 안내문 설정: 불러오기 / 저장 ======
+async function loadConfig() {
+  try {
+    const snap = await db.collection('waitlist_config').doc('notice').get();
+    if (snap.exists) {
+      const d = snap.data();
+      if (d.title) document.getElementById('cfg-title').value = d.title;
+      if (d.body) document.getElementById('cfg-body').value = d.body;
+      if (d.enrollLabel) document.getElementById('cfg-enroll').value = d.enrollLabel;
+      if (d.enrollStartDate) document.getElementById('cfg-enroll-start').value = d.enrollStartDate;
+      if (d.enrollEndDate) document.getElementById('cfg-enroll-end').value = d.enrollEndDate;
+      if (d.extendLabel) document.getElementById('cfg-extend').value = d.extendLabel;
+      if (d.cancelLabel) document.getElementById('cfg-cancel').value = d.cancelLabel;
+      if (d.deadlineNote) document.getElementById('cfg-deadline').value = d.deadlineNote;
     }
-  });
-  // 탐구 자습 라디오 비활성화 (자습 1개, 2개)
-  const baseCount = getJaseupCount();
-  document.querySelectorAll('input[name="tangg-jaseup"]').forEach(radio => {
-    const val = parseInt(radio.value);
-    if (val === 0) { radio.disabled = false; radio.closest('label').style.opacity = '1'; return; }
-    if (baseCount + val > JASEUP_MAX) {
-      radio.disabled = true;
-      radio.closest('label').style.opacity = '0.4';
-    } else {
-      radio.disabled = false;
-      radio.closest('label').style.opacity = '1';
-    }
-  });
-}
-
-function onSelectionChange(changedQid) {
-  updateGlobalJaseupBanner();
-  if (changedQid === 'q4' || changedQid === 'q6') updateMathConflict();
-  clearError(changedQid);
-}
-
-function clearError(qid) {
-  const el = document.getElementById('err-' + qid);
-  if (el) el.style.display = 'none';
-}
-
-// ====== 제출 ======
-document.getElementById('main-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (studentClassLocked) return; // 확정된 경우 이 화면까지 도달하지 않지만 이중 방어
-  let valid = true;
-
-  const studentId = document.getElementById('student-id').value.trim() || '';
-  const name = document.getElementById('student-name').value.trim();
-  const birth = document.getElementById('student-birth').value;
-
-  const answers = {};
-  questions.forEach(q => {
-    if (q.isTangg) {
-      if (!isTanggComplete()) {
-        document.getElementById('err-' + q.id).style.display = 'block';
-        if (valid) document.getElementById('list-' + q.id).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false;
-      } else {
-        const jaseupLabel = tanggJaseupCount === 2 ? '자습 2개' : tanggJaseupCount === 1 ? '자습 1개' : '';
-      const courseLabels = tanggSelected.map(v => displayLabel(v));
-      answers[q.id] = [...courseLabels, ...(jaseupLabel ? [jaseupLabel] : [])].join(' / ');
-      }
-    } else {
-      const checked = document.querySelector(`input[name="${q.id}"]:checked`);
-      if (!checked) {
-        document.getElementById('err-' + q.id).style.display = 'block';
-        if (valid) document.getElementById('list-' + q.id).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false;
-      } else {
-        answers[q.id] = checked.value;
-      }
-    }
-  });
-
-  if (!valid) return;
-
-  // 수학 충돌 검사
-  if (isMathConflict(answers['q4'], answers['q6'])) {
-    alert('수학Ⅰ과 미적분/확통에서 같은 시간대 수업을 동시에 선택할 수 없습니다.\n다시 확인해 주세요.');
-    return;
+  } catch (e) {
+    showMsg('config-status', 'err', '안내문을 불러오지 못했습니다: ' + e.message);
   }
+}
 
-  // 수업 수 최소 3개 체크 (탐구 자습은 수업 아님)
-  const tanggCourses = tanggSelected;
-  const otherClasses = ['q1','q2','q3','q4','q5','q6','q7']
-    .map(id => answers[id])
-    .filter(v => v && v !== '자습').length;
-  const classCount = otherClasses + tanggCourses.length;
+// ====== 입소 희망일 범위 → 문구 자동 생성 ======
+function koreanDow(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+}
+function formatMD(dateStr) {
+  const [y, m, day] = dateStr.split('-');
+  return `${parseInt(m)}/${parseInt(day)}(${koreanDow(dateStr)})`;
+}
+function updateEnrollLabelFromDates() {
+  const start = document.getElementById('cfg-enroll-start').value;
+  const end = document.getElementById('cfg-enroll-end').value;
+  if (!start || !end) return;
+  document.getElementById('cfg-enroll').value = `${formatMD(start)} ~ ${formatMD(end)} 사이에 입소를 희망합니다.`;
+}
+document.getElementById('cfg-enroll-start').addEventListener('change', updateEnrollLabelFromDates);
+document.getElementById('cfg-enroll-end').addEventListener('change', updateEnrollLabelFromDates);
 
-  if (classCount < 3) {
-    alert('수업은 최소 3개 이상 선택해 주세요.\n현재 선택된 수업 수: ' + classCount + '개');
-    return;
-  }
-
-  // suffix 제거 후 저장 (관리자 화면 표시용)
-  const cleanAnswers = {};
-  Object.entries(answers).forEach(([k, v]) => {
-    cleanAnswers[k] = typeof v === 'string' ? v.replace(/__[A-Z]$/, '').replace(/__[A-Z]\//g, '/') : v;
-  });
-
-  // 재접속 시 선택값 복원용 원본 데이터 (q1~q7은 옵션 value 그대로, q8은 tangg 원본 상태)
-  const rawAnswers = {
-    q1: answers.q1 || null, q2: answers.q2 || null, q3: answers.q3 || null,
-    q4: answers.q4 || null, q5: answers.q5 || null, q6: answers.q6 || null, q7: answers.q7 || null,
-    tanggSelected: tanggSelected.slice(),
-    tanggJaseupCount: tanggJaseupCount,
-  };
-
+document.getElementById('btn-save-config').addEventListener('click', async () => {
   const payload = {
-    status: 'enroll',
-    desiredDate: desiredDate,
-    statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    classAnswers: cleanAnswers,
-    classAnswersRaw: rawAnswers,
-    classSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    title: document.getElementById('cfg-title').value,
+    body: document.getElementById('cfg-body').value,
+    enrollLabel: document.getElementById('cfg-enroll').value,
+    enrollStartDate: document.getElementById('cfg-enroll-start').value,
+    enrollEndDate: document.getElementById('cfg-enroll-end').value,
+    extendLabel: document.getElementById('cfg-extend').value,
+    cancelLabel: document.getElementById('cfg-cancel').value,
+    deadlineNote: document.getElementById('cfg-deadline').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   };
-
-  // 완료 화면 즉시 표시 후 백그라운드로 Firestore 저장
-  showDone('enroll');
-  db.collection('waitlist_students').doc(studentId).set(payload, { merge: true }).catch(() => {});
+  try {
+    await db.collection('waitlist_config').doc('notice').set(payload, { merge: true });
+    showMsg('config-status', 'ok', '저장되었습니다. 학생 화면에 바로 반영됩니다.');
+  } catch (e) {
+    showMsg('config-status', 'err', '저장 실패: ' + e.message);
+  }
 });
 
-async function submitStatusOnly(status) {
-  const studentId = document.getElementById('student-id').value.trim();
-  showDone(status);
-  try {
-    await db.collection('waitlist_students').doc(studentId).set({
-      status: status,
-      statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-  } catch (err) { /* 화면은 이미 완료 표시됨 */ }
+// ====== 링크 설정 ======
+function loadLinkSettings() {
+  const saved = localStorage_safe_get('waitlist_base_url');
+  if (saved) { baseUrl = saved; document.getElementById('base-url').value = saved; }
+}
+function localStorage_safe_get(key) {
+  try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+function localStorage_safe_set(key, val) {
+  try { window.localStorage.setItem(key, val); } catch (e) {}
+}
+document.getElementById('btn-save-linksettings').addEventListener('click', () => {
+  baseUrl = document.getElementById('base-url').value.trim() || baseUrl;
+  localStorage_safe_set('waitlist_base_url', baseUrl);
+  showMsg('link-status', 'ok', '저장되었습니다.');
+  renderTable();
+});
+
+// ====== 엑셀 업로드 (날짜별 배치/탭 생성) ======
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function excelDateToYMD(raw) {
+  if (raw == null || raw === '') return '';
+  let s = String(raw).trim();
+  if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return s;
 }
 
-function showDone(status, locked) {
-  document.getElementById('loading').classList.remove('show');
-  document.getElementById('main-form').style.display = 'none';
-  document.querySelectorAll('.progress-label, .progress-bar-wrap').forEach(el => el.style.display = 'none');
-  document.getElementById('jaseup-banner').style.display = 'none';
-  const titleEl = document.getElementById('done-title');
-  const descEl = document.getElementById('done-desc');
-  if (locked) {
-    titleEl.textContent = '✅ 확정된 응답입니다';
-    const label = STATUS_DONE_LABEL[status] || '응답';
-    descEl.innerHTML = `${label} 내용으로 확정되어 더 이상 변경하실 수 없습니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.`;
-  } else if (status === 'enroll') {
-    titleEl.textContent = '✅ 신청이 완료되었습니다';
-    descEl.innerHTML = '입소 및 수업 신청이 정상적으로 접수되었습니다.<br>희망하신 입소 일자에 따라 교습비를 별도 안내드릴 예정입니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.';
-  } else if (status === 'extend') {
-    titleEl.textContent = '✅ 접수되었습니다';
-    descEl.innerHTML = '대기 연장 신청이 정상적으로 접수되었습니다.<br>추후 입소 가능 시 별도로 안내드리겠습니다.';
-  } else {
-    titleEl.textContent = '✅ 접수되었습니다';
-    descEl.innerHTML = '대기 취소 처리되었습니다.<br>문의사항은 행정실로 연락해 주세요.';
-  }
-  document.getElementById('done-screen').style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-const STATUS_DONE_LABEL = { enroll: '입소 희망', extend: '대기 연장', cancel: '대기 취소' };
-
-// 관리자가 수업신청을 확정(classLocked)한 경우, 필수수업 신청 화면을 잠금 안내로 대체
-function applyClassLockUI() {
-  if (!studentClassLocked) return;
-  const optWrap = document.getElementById('classchoice-options');
-  const errEl = document.getElementById('err-classchoice');
-  if (optWrap) {
-    optWrap.outerHTML = `<div style="font-size:13px;color:#c0392b;background:#fdecea;border-radius:6px;padding:12px 14px;">
-      🔒 수업신청 내용이 이미 확정되어 더 이상 변경하실 수 없습니다.<br>변경이 필요한 경우 행정실에 문의해 주세요.
-    </div>`;
-  }
-  if (errEl) errEl.style.display = 'none';
-  const nextBtn = document.getElementById('btn-next-classchoice');
-  if (nextBtn) nextBtn.style.display = 'none';
+function todayDateStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}`;
 }
 
-// 전형명이 "전액 장학생"이 아니면 자습 관련 UI를 전부 숨기고, 탐구는 자습 0개(2과목)로 고정
-function applyScholarshipRestriction() {
-  if (isFullScholarship) return;
-  document.querySelectorAll('.jaseup-option').forEach(li => {
-    li.style.display = 'none';
-    const input = li.querySelector('input');
-    if (input) input.checked = false;
-  });
-  tanggSelected = tanggSelected.filter(v => v && !v.startsWith('자습'));
-  const jaseupSelect = document.getElementById('tangg-jaseup-select');
-  if (jaseupSelect) jaseupSelect.style.display = 'none';
-  const courseWrap = document.getElementById('tangg-course-wrap');
-  if (courseWrap) courseWrap.style.display = 'block';
-  if (tanggJaseupCount < 0) tanggJaseupCount = 0;
-  document.querySelectorAll('input[name="tangg-jaseup"]').forEach(r => { if (r.value === '0') r.checked = true; });
-  const note = document.getElementById('classchoice-jaseup-note');
-  if (note) note.innerHTML = '※ 모든 과목에서 수강을 희망하는 수업의 선생님을 선택해 주세요.';
-  updateTanggUI();
-  updateGlobalJaseupBanner();
-}
-
-// 재접속 시 이전에 선택했던 수업신청 내용을 화면에 복원
-function restoreClassAnswers(raw) {
-  if (!raw) return;
-  ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'].forEach(qid => {
-    const val = raw[qid];
-    if (!val) return;
-    document.querySelectorAll(`input[name="${qid}"]`).forEach(radio => {
-      if (radio.value === val) radio.checked = true;
-    });
-  });
-  if (Array.isArray(raw.tanggSelected) && raw.tanggSelected.length) {
-    tanggSelected = raw.tanggSelected.slice();
-  }
-  if (typeof raw.tanggJaseupCount === 'number' && raw.tanggJaseupCount >= 0) {
-    tanggJaseupCount = raw.tanggJaseupCount;
-    document.querySelectorAll('input[name="tangg-jaseup"]').forEach(radio => {
-      if (parseInt(radio.value) === raw.tanggJaseupCount) radio.checked = true;
-    });
-    const courseWrap = document.getElementById('tangg-course-wrap');
-    if (courseWrap) courseWrap.style.display = raw.tanggJaseupCount === 2 ? 'none' : 'block';
-  }
-  updateTanggUI();
-  updateGlobalJaseupBanner();
-  updateMathConflict();
-}
-
-// 탐구 에러 카드
-const tanggErrCard = document.createElement('div');
-tanggErrCard.className = 'card';
-tanggErrCard.style.cssText = 'border-left:4px solid #c0392b;display:none';
-tanggErrCard.id = 'tangg-err-card';
-tanggErrCard.innerHTML = '<div style="font-size:13px;color:#c0392b;">⚠️ 같은 시간대이거나 동일 선생님/과목 수업은 중복 선택할 수 없습니다.</div>';
-document.getElementById('wrap-4').appendChild(tanggErrCard);
-
-// 초기 탐구 UI
-updateTanggUI();
-document.getElementById('jaseup-banner').style.display = 'none';
-
-// ====== 상태 선택지 렌더링 ======
-function renderStatusOptions() {
-  const ul = document.getElementById('status-options');
-  ul.innerHTML = '';
-  const opts = [
-    { value: 'enroll', label: noticeConfig.enrollLabel || '입소를 희망합니다.' },
-    { value: 'extend', label: noticeConfig.extendLabel || '현재는 입소를 희망하지 않으며, 대기를 연장합니다.' },
-    { value: 'cancel', label: noticeConfig.cancelLabel || '입소를 희망하지 않으며, 대기를 취소합니다.' },
-  ];
-  opts.forEach((opt, i) => {
-    const li = document.createElement('li');
-    li.className = 'option-item';
-    li.innerHTML = `<input type="radio" name="status" id="status_${i}" value="${opt.value}" ${prefillStatus === opt.value ? 'checked' : ''}><label for="status_${i}">${opt.label}</label>`;
-    li.addEventListener('click', () => {
-      const radio = li.querySelector('input');
-      radio.checked = true;
-      document.getElementById('err-status').style.display = 'none';
-    });
-    ul.appendChild(li);
-  });
-}
-
-// ====== Firestore에서 학생/안내문 정보 로드 후 초기화 ======
-(async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const sid = params.get('c'); // 수험번호 (짧은 코드 역할까지 겸함)
-
-  if (!sid) {
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('link-error').style.display = 'block';
+// ====== 문자발송 엑셀 내보내기 ======
+// 현재 화면에 필터링되어 보이는 명단 기준으로, 학생번호/학부모번호를 각각 한 줄씩 생성
+// (두 번호가 동일하면 한 번만 포함)
+function exportSmsExcel() {
+  if (!currentFilteredList.length) {
+    alert('내보낼 학생이 없습니다. (현재 탭/필터 조건을 확인해 주세요)');
     return;
   }
+  const rows = [];
+  let no = 1;
+  currentFilteredList.forEach(s => {
+    const numbers = [];
+    if (s.phone) numbers.push(s.phone);
+    if (s.parentPhone && s.parentPhone !== s.phone) numbers.push(s.parentPhone);
+    numbers.forEach(num => {
+      rows.push({ '번호': no++, '수험번호': s.sid || '', '이름': s.name || '', '연락처': num });
+    });
+  });
+  if (!rows.length) {
+    alert('연락처가 등록된 학생이 없습니다.');
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '문자발송');
+  const fname = `문자발송_${todayDateStr().replace('/', '')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+document.getElementById('btn-export-sms').addEventListener('click', exportSmsExcel);
 
+async function handleFile(file) {
+  showMsg('upload-status', 'info', '엑셀을 읽는 중입니다…');
   try {
-    const [studentSnap, configSnap] = await Promise.all([
-      db.collection('waitlist_students').doc(sid).get(),
-      db.collection('waitlist_config').doc('notice').get(),
-    ]);
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-    if (!studentSnap.exists) {
-      document.getElementById('loading').classList.remove('show');
-      document.getElementById('link-error').style.display = 'block';
+    if (!rows.length) {
+      showMsg('upload-status', 'err', '데이터가 없는 파일입니다.');
       return;
     }
 
-    const student = studentSnap.data();
-    noticeConfig = configSnap.exists ? configSnap.data() : {};
+    // 오늘 날짜 배치(탭) 새로 생성
+    const dateStr = todayDateStr();
+    const sameDateCount = allBatches.filter(b => b.dateStr === dateStr).length;
+    const seq = sameDateCount + 1;
+    const batchRef = db.collection('waitlist_batches').doc();
+    const batchId = batchRef.id;
 
-    // 학생 식별 정보 세팅 (화면 비노출, 저장용)
-    document.getElementById('student-id').value = sid;
-    document.getElementById('student-name').value = student.name || '';
-    document.getElementById('student-birth').value = student.birth || '';
-    document.getElementById('notice-student-name').textContent = student.name || '-';
-    document.getElementById('notice-student-birth').textContent = student.birth || '-';
+    let batch = db.batch();
+    let count = 0, batchCount = 0;
 
-    // 안내문 렌더링
-    document.getElementById('notice-title').innerHTML = noticeConfig.title || '강남대성기숙 의대관<br>입소 안내';
-    document.getElementById('notice-body').innerHTML = noticeConfig.body || '';
+    for (const row of rows) {
+      const sid = String(row['수험번호'] || '').trim();
+      if (!sid) continue;
+      const docRef = db.collection('waitlist_students').doc(sid);
+      const data = {
+        sid,
+        name: String(row['성명'] || '').trim(),
+        birth: excelDateToYMD(row['생년월일']),
+        phone: String(row['학생 연락처'] || '').trim(),
+        parentPhone: String(row['학부모 연락처'] || '').trim(),
+        group: String(row['그룹'] || '').trim(),
+        admissionType: String(row['전형명'] || '').trim(),
+        stage: String(row['단계'] || '').trim(),
+        applyPeriod: String(row['원서접수기간'] || '').trim(),
+        note: String(row['비고상세'] || '').trim(),
+        batchId: batchId,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      // merge: true → 기존 status/desiredDate/classAnswers 등 응답 데이터는 그대로 유지됨
+      batch.set(docRef, data, { merge: true });
+      count++; batchCount++;
 
-    // 입소 희망일 선택 가능 범위 설정
-    const dateInput = document.getElementById('desired-date');
-    if (noticeConfig.enrollStartDate) dateInput.min = noticeConfig.enrollStartDate;
-    if (noticeConfig.enrollEndDate) dateInput.max = noticeConfig.enrollEndDate;
-
-    // ====== 관리자 확정(잠금) 여부에 따른 재접속 처리 ======
-    // - 입소여부(statusLocked)와 수업신청(classLocked)은 서로 독립적으로 잠금 처리됨
-    // - 입소여부 확정 + 수업신청 미확정(그리고 상태가 '입소희망'인 경우): 입소여부/희망일은 잠그되, 수업신청 화면은 바로 진행 가능
-    // - 입소여부 확정 + 수업신청도 확정(또는 대기연장/취소 확정): 완전 잠금, 완료 화면만 표시
-    // - 입소여부 미확정: 이전 응답을 기본값으로 채운 채 처음부터 다시 진행 가능
-    studentClassLocked = !!student.classLocked;
-    isFullScholarship = /전액.*장학/.test(student.admissionType || '');
-
-    if (student.statusLocked) {
-      if (student.status === 'enroll' && !student.classLocked) {
-        // 입소여부/희망일은 확정되었지만 수업신청은 아직 가능
-        desiredDate = student.desiredDate || '';
-        if (desiredDate) document.getElementById('desired-date').value = desiredDate;
-        flowOrder = ['classchoice', '1', '2', '3', '4'];
-        document.getElementById('btn-prev-classchoice').style.display = 'none'; // 입소여부로 되돌아갈 수 없음
-        restoreClassAnswers(student.classAnswersRaw);
-        applyScholarshipRestriction();
-        document.getElementById('loading').classList.remove('show');
-        document.getElementById('app-root').style.display = 'block';
-        showSectionById('classchoice');
-        return;
+      if (batchCount >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
       }
-      // 완전 잠금 (대기연장/취소 확정, 또는 입소+수업신청 모두 확정)
-      document.getElementById('loading').classList.remove('show');
-      showDone(student.status, true);
-      document.getElementById('app-root').style.display = 'block';
-      return;
     }
+    if (batchCount > 0) await batch.commit();
 
-    // 입소여부 확정 전 → 이전 응답 프리필 후 처음부터 진행
-    prefillStatus = student.status || null;
-    if (student.desiredDate) {
-      desiredDate = student.desiredDate;
-      document.getElementById('desired-date').value = student.desiredDate;
-    }
-    renderStatusOptions();
-    restoreClassAnswers(student.classAnswersRaw);
-    applyScholarshipRestriction();
-    applyClassLockUI();
+    await batchRef.set({
+      dateStr, seq, count,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
 
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('app-root').style.display = 'block';
-  } catch (err) {
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('link-error').style.display = 'block';
+    showMsg('upload-status', 'ok', `${count}명 업로드 완료 (기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
+    fileInput.value = '';
+  } catch (e) {
+    showMsg('upload-status', 'err', '업로드 실패: ' + e.message);
   }
-})();
-
-// 섹션 이동 버튼 이벤트
-document.getElementById('btn-next-status').addEventListener('click', () => {
-  const checked = document.querySelector('input[name="status"]:checked');
-  if (!checked) {
-    document.getElementById('err-status').style.display = 'block';
-    return;
-  }
-  document.getElementById('err-status').style.display = 'none';
-  waitlistStatus = checked.value;
-  if (waitlistStatus === 'enroll') {
-    flowOrder = ['0', 'date', 'classchoice', '1', '2', '3', '4'];
-    showSectionById('date');
-  } else {
-    submitStatusOnly(waitlistStatus);
-  }
-});
-document.getElementById('btn-next-date').addEventListener('click', () => {
-  const d = document.getElementById('desired-date').value;
-  if (!d) {
-    document.getElementById('err-date').style.display = 'block';
-    document.getElementById('err-date').textContent = '입소 희망일을 입력해 주세요.';
-    return;
-  }
-  const min = noticeConfig.enrollStartDate;
-  const max = noticeConfig.enrollEndDate;
-  if ((min && d < min) || (max && d > max)) {
-    document.getElementById('err-date').style.display = 'block';
-    document.getElementById('err-date').textContent =
-      `입소 희망일은 ${min || ''} ~ ${max || ''} 사이에서만 선택 가능합니다.`;
-    return;
-  }
-  document.getElementById('err-date').style.display = 'none';
-  desiredDate = d;
-  showSectionById('classchoice');
-});
-
-// classchoice 옵션 클릭 시 라디오 체크
-document.querySelectorAll('#classchoice-options .option-item').forEach(li => {
-  li.addEventListener('click', () => {
-    li.querySelector('input[type="radio"]').checked = true;
-    document.getElementById('err-classchoice').style.display = 'none';
-  });
-});
-
-document.getElementById('btn-prev-classchoice').addEventListener('click', () => showSectionById('date'));
-
-document.getElementById('btn-next-classchoice').addEventListener('click', async () => {
-  if (studentClassLocked) return; // 확정된 경우 버튼 자체가 숨겨져 있지만 이중 방어
-  const checked = document.querySelector('input[name="classchoice"]:checked');
-  if (!checked) {
-    document.getElementById('err-classchoice').style.display = 'block';
-    return;
-  }
-  document.getElementById('err-classchoice').style.display = 'none';
-  if (checked.value === 'now') {
-    showSectionById('1');
-    return;
-  }
-  // 학생과 상의 후 신청 → 입소여부/희망일만 저장, 수업신청은 나중에 동일 링크로 재접속하여 진행
-  const studentId = document.getElementById('student-id').value.trim();
-  showDeferred();
-  try {
-    await db.collection('waitlist_students').doc(studentId).set({
-      status: 'enroll',
-      desiredDate: desiredDate,
-      statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-  } catch (err) { /* 화면은 이미 안내 표시됨 */ }
-});
-
-function showDeferred() {
-  document.getElementById('loading').classList.remove('show');
-  document.getElementById('main-form').style.display = 'none';
-  document.querySelectorAll('.progress-label, .progress-bar-wrap').forEach(el => el.style.display = 'none');
-  document.getElementById('jaseup-banner').style.display = 'none';
-  document.getElementById('done-title').textContent = '✅ 입소 신청이 접수되었습니다';
-  document.getElementById('done-desc').innerHTML =
-    '필수 선택 수업 신청은 아직 완료되지 않았습니다.<br>학생과 상의하신 후, 동일한 링크로 다시 접속하시면 이어서 신청하실 수 있습니다.';
-  document.getElementById('done-screen').style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-document.getElementById('btn-prev-date').addEventListener('click', () => showSectionById('0'));
-document.getElementById('btn-next-1').addEventListener('click', () => goNext(1));
-document.getElementById('btn-prev-1').addEventListener('click', () => showSectionById('classchoice'));
-document.getElementById('btn-next-2').addEventListener('click', () => goNext(2));
-document.getElementById('btn-next-3').addEventListener('click', () => goNext(3));
-document.getElementById('btn-prev-2').addEventListener('click', () => goPrev(2));
-document.getElementById('btn-prev-3').addEventListener('click', () => goPrev(3));
-document.getElementById('btn-prev-4').addEventListener('click', () => goPrev(4));
+// ====== 실시간 구독 ======
+db.collection('waitlist_students').onSnapshot((snap) => {
+  allStudents = snap.docs.map(d => d.data());
+  populateStageFilter();
+  renderTable();
+}, (err) => {
+  document.getElementById('student-tbody').innerHTML =
+    `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+});
 
+db.collection('waitlist_batches').orderBy('createdAt', 'asc').onSnapshot((snap) => {
+  allBatches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderTabs();
+}, () => { /* 배치 로딩 실패해도 전체 탭은 동작 */ });
+
+function batchLabel(b) {
+  const sameDate = allBatches.filter(x => x.dateStr === b.dateStr);
+  return sameDate.length > 1 ? `${b.dateStr}_${b.seq}` : b.dateStr;
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  const tabs = ['<div class="tab-item' + (currentTab === '__all__' ? ' active' : '') + '" data-batch="__all__">전체</div>'];
+  allBatches.forEach(b => {
+    tabs.push(`<div class="tab-item${currentTab === b.id ? ' active' : ''}" data-batch="${b.id}">${batchLabel(b)} <span style="color:#bbb;font-weight:400;">(${b.count || 0})</span></div>`);
+  });
+  bar.innerHTML = tabs.join('');
+  bar.querySelectorAll('.tab-item').forEach(el => {
+    el.addEventListener('click', () => {
+      currentTab = el.dataset.batch;
+      renderTabs();
+      renderTable();
+    });
+  });
+}
+
+function populateStageFilter() {
+  const sel = document.getElementById('filter-stage');
+  const current = sel.value;
+  const stages = [...new Set(allStudents.map(s => s.stage).filter(Boolean))];
+  sel.innerHTML = '<option value="">전체 단계</option>' + stages.map(s => `<option value="${s}">${s}</option>`).join('');
+  sel.value = current;
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  if (ts.toDate) return ts.toDate().toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  return '';
+}
+
+function renderTable() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const stageFilter = document.getElementById('filter-stage').value;
+  const statusFilter = document.getElementById('filter-status').value;
+
+  let list = allStudents.filter(s => {
+    if (currentTab !== '__all__' && s.batchId !== currentTab) return false;
+    if (q && !((s.name||'').toLowerCase().includes(q) || (s.sid||'').includes(q))) return false;
+    if (stageFilter && s.stage !== stageFilter) return false;
+    if (statusFilter === 'none' && s.status) return false;
+    if (statusFilter && statusFilter !== 'none' && s.status !== statusFilter) return false;
+    return true;
+  });
+
+  currentFilteredList = list;
+
+  document.getElementById('count-pill').textContent = `${list.length}명`;
+
+  if (!list.length) {
+    document.getElementById('student-tbody').innerHTML =
+      '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+    return;
+  }
+
+  document.getElementById('student-tbody').innerHTML = list.map(s => {
+    const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
+    const statusBadge = s.status
+      ? `<span class="badge-status badge-${s.status}">${STATUS_LABEL[s.status] || s.status}</span>`
+      : `<span class="badge-status badge-none">미응답</span>`;
+    const classBadge = s.classAnswers
+      ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s.sid}')">제출완료 · 보기</span>`
+      : `<span class="badge-status badge-class-none">미제출</span>`;
+    const statusLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
+        <input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','statusLocked',this.checked)"> 확정
+      </label>`;
+    const classLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
+        <input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','classLocked',this.checked)"> 확정
+      </label>`;
+    const submittedAtTxt = s.statusSubmittedAt ? fmtDate(s.statusSubmittedAt) : '';
+    return `
+      <tr>
+        <td>${s.sid || ''}</td>
+        <td>${s.name || ''}</td>
+        <td>${s.admissionType || ''}</td>
+        <td>${s.phone || ''}</td>
+        <td>${s.parentPhone || ''}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
+        <td>${statusBadge}${statusLockCb}</td>
+        <td>${s.desiredDate || ''}${submittedAtTxt ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">${submittedAtTxt}</div>` : ''}</td>
+        <td>${classBadge}${classLockCb}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function toggleLock(sid, field, checked) {
+  try {
+    await db.collection('waitlist_students').doc(sid).set({ [field]: checked }, { merge: true });
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  }
+}
+
+function copyLink(link, btn) {
+  navigator.clipboard.writeText(link).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '복사됨!';
+    setTimeout(() => btn.textContent = orig, 1200);
+  }).catch(() => alert(link));
+}
+
+function openDetail(sid) {
+  const s = allStudents.find(x => x.sid === sid);
+  if (!s) return;
+  document.getElementById('modal-name').textContent = `${s.name} (${s.sid}) 수업신청 내역`;
+  const ans = s.classAnswers || {};
+  let rows = Object.entries(Q_LABELS).map(([k, label]) => {
+    return `<div class="row"><span class="k">${label}</span><span>${ans[k] || '-'}</span></div>`;
+  }).join('');
+  rows += `<div class="row"><span class="k">입소 희망일</span><span>${s.desiredDate || '-'}</span></div>`;
+  rows += `<div class="row"><span class="k">제출 시각</span><span>${fmtDate(s.classSubmittedAt)}</span></div>`;
+  document.getElementById('modal-body').innerHTML = rows;
+  openModal('modal-detail');
+}
+
+document.getElementById('search-input').addEventListener('input', renderTable);
+document.getElementById('filter-stage').addEventListener('change', renderTable);
+document.getElementById('filter-status').addEventListener('change', renderTable);
+
+loadConfig();
+loadLinkSettings();
 </script>
 </body>
 </html>
