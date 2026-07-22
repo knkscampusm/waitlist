@@ -38,14 +38,16 @@
     border:none; border-radius:6px; padding:9px 18px; font-size:13px; font-weight:500;
     cursor:pointer; transition:background .15s;
   }
-  .btn-primary { background:#6750a4; color:#fff; }
-  .btn-primary:hover { background:#5a4496; }
-  .btn-outline { background:#fff; color:#6750a4; border:1px solid #6750a4; }
-  .btn-outline:hover { background:#f3f0ff; }
+  .btn-primary { background:#00ADAA; color:#fff; }
+  .btn-primary:hover { background:#008C8A; }
+  .btn-outline { background:#fff; color:#00ADAA; border:1px solid #00ADAA; }
+  .btn-excel { background:#217346; color:#fff; padding:9px 18px; font-size:13px; font-weight:600; }
+  .btn-excel:hover { background:#1a5c38; }
+  .btn-outline:hover { background:#E0F7F6; }
   .btn-sm { padding:5px 10px; font-size:12px; }
   .btn:disabled { background:#ccc; color:#fff; cursor:not-allowed; }
 
-  .top-bar { background: #6750a4; height: 8px; border-radius: 8px 8px 0 0; }
+  .top-bar { background: #00ADAA; height: 8px; border-radius: 8px 8px 0 0; }
   .panel {
     background: #fff;
     border-radius: 0 0 10px 10px;
@@ -54,30 +56,30 @@
     margin-bottom: 20px;
   }
   .panel-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display:flex; align-items:center; gap:8px; }
-  .panel-title .badge { font-size:11px; font-weight:500; color:#6750a4; background:#f3f0ff; padding:2px 8px; border-radius:10px; }
+  .panel-title .badge { font-size:11px; font-weight:500; color:#00ADAA; background:#E0F7F6; padding:2px 8px; border-radius:10px; }
 
   label.field-label { display:block; font-size:13px; font-weight:500; color:#444; margin-bottom:6px; }
   textarea, input[type=text], input[type=date], input[type=url] {
     width:100%; border:1px solid #ddd; border-radius:6px; padding:9px 10px; font-size:13px;
     font-family:inherit; outline:none; background:#fafafa;
   }
-  textarea:focus, input:focus { border-color:#6750a4; background:#fff; }
+  textarea:focus, input:focus { border-color:#00ADAA; background:#fff; }
   textarea { min-height:90px; resize:vertical; }
   .field-row { margin-bottom:14px; }
   .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 
   .upload-drop {
-    border:2px dashed #c8b8ff; border-radius:8px; padding:24px; text-align:center;
+    border:2px dashed #7FDAD8; border-radius:8px; padding:24px; text-align:center;
     color:#888; font-size:13px; cursor:pointer; transition:.15s;
   }
-  .upload-drop:hover { background:#f8f5ff; border-color:#6750a4; }
-  .upload-drop.dragover { background:#f3f0ff; border-color:#6750a4; }
+  .upload-drop:hover { background:#EAFAF9; border-color:#00ADAA; }
+  .upload-drop.dragover { background:#E0F7F6; border-color:#00ADAA; }
 
   .status-msg { font-size:12px; margin-top:10px; padding:8px 10px; border-radius:6px; display:none; }
   .status-msg.show { display:block; }
   .status-msg.ok { background:#eafaf0; color:#1e7e4a; }
   .status-msg.err { background:#fdecea; color:#c0392b; }
-  .status-msg.info { background:#f3f0ff; color:#4a3b8c; }
+  .status-msg.info { background:#E0F7F6; color:#00706E; }
 
   /* 탭 */
   .tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:0; }
@@ -85,8 +87,8 @@
     padding:8px 16px; font-size:13px; font-weight:500; color:#888; cursor:pointer;
     border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
   }
-  .tab-item:hover { color:#6750a4; }
-  .tab-item.active { color:#6750a4; border-bottom-color:#6750a4; font-weight:700; }
+  .tab-item:hover { color:#00ADAA; }
+  .tab-item.active { color:#00ADAA; border-bottom-color:#00ADAA; font-weight:700; }
 
   .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
   .toolbar input[type=text] { max-width:220px; }
@@ -107,7 +109,7 @@
   .badge-enroll { background:#e3f6e9; color:#1e7e4a; }
   .badge-extend { background:#fff4de; color:#a06b0f; }
   .badge-cancel { background:#fdecea; color:#c0392b; }
-  .badge-class-done { background:#e9e3ff; color:#5a4496; }
+  .badge-class-done { background:#D2F3F2; color:#008C8A; }
   .badge-class-none { background:#eee; color:#aaa; }
 
   .table-scroll { overflow-x:auto; max-height:640px; overflow-y:auto; }
@@ -160,7 +162,7 @@
         <option value="extend">대기 연장</option>
         <option value="cancel">대기 취소</option>
       </select>
-      <button class="btn btn-outline btn-sm" id="btn-export-sms">EXCEL</button>
+      <button class="btn btn-excel" id="btn-export-sms">EXCEL</button>
       <span class="count-pill" id="count-pill">0명</span>
     </div>
     <div class="table-scroll">
