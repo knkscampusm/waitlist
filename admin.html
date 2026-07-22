@@ -137,7 +137,6 @@
     <button class="btn btn-outline" id="btn-open-config">✏️ 안내문 편집</button>
     <button class="btn btn-outline" id="btn-open-upload">📥 명단 업로드</button>
     <button class="btn btn-outline" id="btn-open-linksettings">🔗 링크 설정</button>
-    <button class="btn btn-outline" id="btn-export-sms">📩 문자발송 엑셀</button>
   </div>
 
   <!-- 명단 -->
@@ -161,6 +160,7 @@
         <option value="extend">대기 연장</option>
         <option value="cancel">대기 취소</option>
       </select>
+      <button class="btn btn-outline btn-sm" id="btn-export-sms">📩 문자발송 엑셀 (현재 탭)</button>
       <span class="count-pill" id="count-pill">0명</span>
     </div>
     <div class="table-scroll">
@@ -413,13 +413,12 @@ function exportSmsExcel() {
     return;
   }
   const rows = [];
-  let no = 1;
   currentFilteredList.forEach(s => {
     const numbers = [];
     if (s.phone) numbers.push(s.phone);
     if (s.parentPhone && s.parentPhone !== s.phone) numbers.push(s.parentPhone);
     numbers.forEach(num => {
-      rows.push({ '번호': no++, '수험번호': s.sid || '', '이름': s.name || '', '연락처': num });
+      rows.push({ '연락처': num, '수험번호': s.sid || '', '이름': s.name || '' });
     });
   });
   if (!rows.length) {
@@ -427,7 +426,7 @@ function exportSmsExcel() {
     return;
   }
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 10 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '문자발송');
   const fname = `문자발송_${todayDateStr().replace('/', '')}.xlsx`;
@@ -510,9 +509,21 @@ db.collection('waitlist_students').onSnapshot((snap) => {
     `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
+let defaultTabApplied = false;
 db.collection('waitlist_batches').orderBy('createdAt', 'asc').onSnapshot((snap) => {
   allBatches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (!defaultTabApplied) {
+    const today = todayDateStr();
+    const todaysBatches = allBatches.filter(b => b.dateStr === today);
+    if (todaysBatches.length) {
+      // 같은 날짜에 여러 번 업로드했다면 seq가 가장 큰(가장 최근) 배치를 기본 선택
+      const latest = todaysBatches.reduce((a, b) => (b.seq > a.seq ? b : a));
+      currentTab = latest.id;
+    }
+    defaultTabApplied = true;
+  }
   renderTabs();
+  renderTable();
 }, () => { /* 배치 로딩 실패해도 전체 탭은 동작 */ });
 
 function batchLabel(b) {
