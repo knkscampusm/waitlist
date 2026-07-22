@@ -31,7 +31,7 @@
   }
 
   .top-bar {
-    background: #6750a4;
+    background: #00ADAA;
     height: 10px;
     border-radius: 8px 8px 0 0;
     margin-bottom: 0;
@@ -80,8 +80,8 @@
   .jaseup-banner {
     max-width: 680px;
     margin: 0 auto 12px;
-    background: #f3f0ff;
-    border: 1px solid #c8b8ff;
+    background: #E0F7F6;
+    border: 1px solid #7FDAD8;
     border-radius: 8px;
     padding: 14px 20px;
     display: flex;
@@ -95,14 +95,14 @@
 
   .jaseup-banner .label {
     font-size: 14px;
-    color: #4a3b8c;
+    color: #00706E;
     font-weight: 500;
   }
 
   .jaseup-count {
     font-size: 22px;
     font-weight: 700;
-    color: #6750a4;
+    color: #00ADAA;
     min-width: 80px;
     text-align: right;
   }
@@ -119,7 +119,7 @@
 
   .jaseup-bar-fill {
     height: 100%;
-    background: #6750a4;
+    background: #00ADAA;
     border-radius: 2px;
     transition: width 0.3s;
   }
@@ -156,13 +156,13 @@
     user-select: none;
   }
 
-  .option-item:hover { background: #f8f5ff; }
+  .option-item:hover { background: #EAFAF9; }
 
   .option-item input[type="radio"] {
     width: 18px;
     height: 18px;
     margin-right: 12px;
-    accent-color: #6750a4;
+    accent-color: #00ADAA;
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -221,7 +221,7 @@
     transition: border-color 0.2s;
   }
 
-  .input-group input:focus { border-bottom-color: #6750a4; }
+  .input-group input:focus { border-bottom-color: #00ADAA; }
 
   /* 제출 버튼 */
   .submit-wrap {
@@ -232,7 +232,7 @@
   }
 
   .btn-submit {
-    background: #6750a4;
+    background: #00ADAA;
     color: #fff;
     border: none;
     padding: 12px 32px;
@@ -243,7 +243,7 @@
     transition: background 0.2s;
   }
 
-  .btn-submit:hover { background: #5a4496; }
+  .btn-submit:hover { background: #008C8A; }
   .btn-submit:disabled { background: #bbb; cursor: not-allowed; }
 
   /* 오류 메시지 */
@@ -266,7 +266,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
   }
 
-  #done-screen h2 { font-size: 22px; color: #6750a4; margin-bottom: 12px; }
+  #done-screen h2 { font-size: 22px; color: #00ADAA; margin-bottom: 12px; }
   #done-screen p { color: #555; font-size: 14px; line-height: 1.7; }
 
   .loading-overlay {
@@ -285,7 +285,7 @@
   .spinner {
     width: 36px; height: 36px;
     border: 3px solid #e0e0e0;
-    border-top-color: #6750a4;
+    border-top-color: #00ADAA;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -305,7 +305,7 @@
   }
 
   .section-title-bar {
-    background: #6750a4;
+    background: #00ADAA;
     color: #fff;
     font-size: 15px;
     font-weight: 600;
@@ -326,8 +326,8 @@
 
   .btn-prev {
     background: #fff;
-    color: #6750a4;
-    border: 1px solid #6750a4;
+    color: #00ADAA;
+    border: 1px solid #00ADAA;
     padding: 11px 28px;
     font-size: 15px;
     font-weight: 500;
@@ -336,7 +336,7 @@
   }
 
   .btn-next {
-    background: #6750a4;
+    background: #00ADAA;
     color: #fff;
     border: none;
     padding: 11px 28px;
@@ -346,8 +346,8 @@
     cursor: pointer;
   }
 
-  .btn-next:hover { background: #5a4496; }
-  .btn-prev:hover { background: #f3f0ff; }
+  .btn-next:hover { background: #008C8A; }
+  .btn-prev:hover { background: #E0F7F6; }
 
   /* 진행 표시 */
   .progress-bar-wrap {
@@ -360,7 +360,7 @@
   }
   .progress-bar-fill {
     height: 100%;
-    background: #6750a4;
+    background: #00ADAA;
     border-radius: 4px;
     transition: width 0.3s;
   }
@@ -845,7 +845,7 @@ function updateTanggUI() {
       else txt = `${displayLabel(tanggSelected[0])} + ${displayLabel(tanggSelected[1])} ✓`;
     }
     statusEl.textContent = txt;
-    statusEl.style.color = isTanggComplete() ? '#2d7a2d' : '#6750a4';
+    statusEl.style.color = isTanggComplete() ? '#2d7a2d' : '#00ADAA';
   }
 }
 
@@ -946,18 +946,18 @@ Object.entries(sectionMap).forEach(([secIdx, qids]) => {
           <div style="font-size:13px;font-weight:500;color:#444;margin-bottom:10px;">탐구 자습 개수를 선택해 주세요 <span style="color:#c0392b">*</span></div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="0" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 0개 (탐구 2과목)
+              <input type="radio" name="tangg-jaseup" value="0" style="accent-color:#00ADAA;width:16px;height:16px;"> 자습 0개 (탐구 2과목)
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="1" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 1개 (탐구 1과목)
+              <input type="radio" name="tangg-jaseup" value="1" style="accent-color:#00ADAA;width:16px;height:16px;"> 자습 1개 (탐구 1과목)
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
-              <input type="radio" name="tangg-jaseup" value="2" style="accent-color:#6750a4;width:16px;height:16px;"> 자습 2개 (탐구 0과목)
+              <input type="radio" name="tangg-jaseup" value="2" style="accent-color:#00ADAA;width:16px;height:16px;"> 자습 2개 (탐구 0과목)
             </label>
           </div>
         </div>
         <div id="tangg-course-wrap" style="display:none;">
-          <div id="tangg-status" style="font-size:13px;margin-bottom:12px;color:#6750a4;min-height:18px;"></div>
+          <div id="tangg-status" style="font-size:13px;margin-bottom:12px;color:#00ADAA;min-height:18px;"></div>
           <ul class="options-list" id="list-${q.id}"></ul>
         </div>
         <div class="error-msg" id="err-${q.id}">탐구 자습 개수 및 선생님을 선택해 주세요.</div>
@@ -972,7 +972,7 @@ Object.entries(sectionMap).forEach(([secIdx, qids]) => {
           <label for="${q.id}_${optIdx}">${displayLabel(opt)}</label>
         `;
         const cb = li.querySelector('input');
-        cb.style.cssText = 'accent-color:#6750a4;width:18px;height:18px;margin-right:12px;flex-shrink:0;cursor:pointer;';
+        cb.style.cssText = 'accent-color:#00ADAA;width:18px;height:18px;margin-right:12px;flex-shrink:0;cursor:pointer;';
         li.addEventListener('click', () => {
           if (cb.disabled) return;
           onTanggClick(opt);
