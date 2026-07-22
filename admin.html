@@ -171,12 +171,11 @@
             <th>학부모 번호</th>
             <th>개인 링크</th>
             <th>입소여부 응답</th>
-            <th>희망일</th>
             <th>수업신청</th>
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -504,7 +503,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
-    `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+    `<tr><td colspan="8" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
 let defaultTabApplied = false;
@@ -571,7 +570,7 @@ function renderTable() {
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+      '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
     return;
   }
 
@@ -583,13 +582,15 @@ function renderTable() {
     const classBadge = s.classAnswers
       ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s.sid}')">제출완료 · 보기</span>`
       : `<span class="badge-status badge-class-none">미제출</span>`;
-    const statusLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
-        <input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','statusLocked',this.checked)"> 확정
-      </label>`;
-    const classLockCb = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;cursor:pointer;margin-top:4px;">
-        <input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','classLocked',this.checked)"> 확정
-      </label>`;
+    const statusLockCb = `<input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','statusLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
+    const classLockCb = `<input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','classLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
     const submittedAtTxt = s.statusSubmittedAt ? fmtDate(s.statusSubmittedAt) : '';
+    const statusCell = `
+      <div style="display:flex;align-items:center;">
+        ${statusBadge}${s.status === 'enroll' && s.desiredDate ? `<span style="font-size:12px;color:#555;margin-left:8px;">${s.desiredDate}</span>` : ''}${statusLockCb}
+      </div>
+      ${submittedAtTxt ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">${submittedAtTxt}</div>` : ''}`;
+    const classCell = `<div style="display:flex;align-items:center;">${classBadge}${classLockCb}</div>`;
     return `
       <tr>
         <td>${s.sid || ''}</td>
@@ -598,9 +599,8 @@ function renderTable() {
         <td>${s.phone || ''}</td>
         <td>${s.parentPhone || ''}</td>
         <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
-        <td>${statusBadge}${statusLockCb}</td>
-        <td>${s.desiredDate || ''}${submittedAtTxt ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">${submittedAtTxt}</div>` : ''}</td>
-        <td>${classBadge}${classLockCb}</td>
+        <td>${statusCell}</td>
+        <td>${classCell}</td>
       </tr>`;
   }).join('');
 }
