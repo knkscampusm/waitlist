@@ -159,16 +159,69 @@
   .option-item:hover { background: #EAFAF9; }
 
   .option-item input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
     width: 18px;
     height: 18px;
     margin-right: 12px;
-    accent-color: #00ADAA;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    outline: none;
     cursor: pointer;
     flex-shrink: 0;
+    position: relative;
+    background: #fff;
   }
 
-  .option-item.jaseup-option input[type="radio"] {
-    accent-color: #888;
+  .option-item input[type="radio"]:checked {
+    border-color: #00ADAA;
+  }
+
+  .option-item input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    background: #00ADAA;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .option-item.jaseup-option input[type="radio"]:checked {
+    border-color: #888;
+  }
+  .option-item.jaseup-option input[type="radio"]:checked::after {
+    background: #888;
+  }
+
+  input[type="radio"][name="tangg-jaseup"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+    background: #fff;
+    vertical-align: middle;
+  }
+  input[type="radio"][name="tangg-jaseup"]:checked {
+    border-color: #00ADAA;
+  }
+  input[type="radio"][name="tangg-jaseup"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: #00ADAA;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .option-item label {
