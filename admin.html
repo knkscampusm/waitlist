@@ -414,11 +414,12 @@ function exportSmsExcel() {
   }
   const rows = [];
   currentFilteredList.forEach(s => {
+    const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
     const numbers = [];
     if (s.phone) numbers.push(s.phone);
     if (s.parentPhone && s.parentPhone !== s.phone) numbers.push(s.parentPhone);
     numbers.forEach(num => {
-      rows.push({ '연락처': num, '수험번호': s.sid || '', '이름': s.name || '' });
+      rows.push({ '연락처': num, '수험번호': s.sid || '', '이름': s.name || '', '개인 링크': link });
     });
   });
   if (!rows.length) {
@@ -426,7 +427,7 @@ function exportSmsExcel() {
     return;
   }
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 10 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 46 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '문자발송');
   const fname = `문자발송_${todayDateStr().replace('/', '')}.xlsx`;
