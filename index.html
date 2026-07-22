@@ -593,6 +593,15 @@
 <script>
 // ====== 설정 ======
 const JASEUP_MAX = 6;
+const JANDI_WEBHOOK_URL = 'https://wh.jandi.com/connect-api/webhook/21903148/952933eb410e33bcad7aedfe74e37adf';
+
+function notifyJandi(message) {
+  fetch(JANDI_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Accept': 'application/vnd.tosslab.jandi-v2+json' },
+    body: JSON.stringify({ body: message }),
+  }).catch(() => { /* 알림 전송 실패해도 학생 제출 자체에는 영향 없음 */ });
+}
 
 // ====== 전역 상태 ======
 let flowOrder = ['0'];
@@ -1232,12 +1241,16 @@ document.getElementById('main-form').addEventListener('submit', async (e) => {
 
   // 완료 화면 즉시 표시 후 백그라운드로 Firestore 저장
   showDone('enroll');
+  notifyJandi(`${name}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})`);
+  notifyJandi(`${name}(${studentId}) - 수업신청 완료`);
   db.collection('waitlist_students').doc(studentId).set(payload, { merge: true }).catch(() => {});
 });
 
 async function submitStatusOnly(status) {
   const studentId = document.getElementById('student-id').value.trim();
+  const studentName = document.getElementById('student-name').value.trim();
   showDone(status);
+  notifyJandi(`${studentName}(${studentId}) - ${STATUS_DONE_LABEL[status] || status}`);
   try {
     await db.collection('waitlist_students').doc(studentId).set({
       status: status,
@@ -1535,7 +1548,9 @@ document.getElementById('btn-next-classchoice').addEventListener('click', async 
   }
   // 학생과 상의 후 신청 → 입소여부/희망일만 저장, 수업신청은 나중에 동일 링크로 재접속하여 진행
   const studentId = document.getElementById('student-id').value.trim();
+  const studentName = document.getElementById('student-name').value.trim();
   showDeferred();
+  notifyJandi(`${studentName}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})\n※ 수업신청은 추후 진행 예정`);
   try {
     await db.collection('waitlist_students').doc(studentId).set({
       status: 'enroll',
