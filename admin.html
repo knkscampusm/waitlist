@@ -150,9 +150,6 @@
 
     <div class="toolbar">
       <input type="text" id="search-input" placeholder="이름 / 수험번호 검색">
-      <select id="filter-stage">
-        <option value="">전체 단계</option>
-      </select>
       <select id="filter-status">
         <option value="">전체 응답상태</option>
         <option value="none">미응답</option>
@@ -504,7 +501,6 @@ async function handleFile(file) {
 // ====== 실시간 구독 ======
 db.collection('waitlist_students').onSnapshot((snap) => {
   allStudents = snap.docs.map(d => d.data());
-  populateStageFilter();
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
@@ -549,14 +545,6 @@ function renderTabs() {
   });
 }
 
-function populateStageFilter() {
-  const sel = document.getElementById('filter-stage');
-  const current = sel.value;
-  const stages = [...new Set(allStudents.map(s => s.stage).filter(Boolean))];
-  sel.innerHTML = '<option value="">전체 단계</option>' + stages.map(s => `<option value="${s}">${s}</option>`).join('');
-  sel.value = current;
-}
-
 function fmtDate(ts) {
   if (!ts) return '';
   if (ts.toDate) return ts.toDate().toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -565,13 +553,11 @@ function fmtDate(ts) {
 
 function renderTable() {
   const q = document.getElementById('search-input').value.trim().toLowerCase();
-  const stageFilter = document.getElementById('filter-stage').value;
   const statusFilter = document.getElementById('filter-status').value;
 
   let list = allStudents.filter(s => {
     if (currentTab !== '__all__' && s.batchId !== currentTab) return false;
     if (q && !((s.name||'').toLowerCase().includes(q) || (s.sid||'').includes(q))) return false;
-    if (stageFilter && s.stage !== stageFilter) return false;
     if (statusFilter === 'none' && s.status) return false;
     if (statusFilter && statusFilter !== 'none' && s.status !== statusFilter) return false;
     return true;
@@ -650,7 +636,6 @@ function openDetail(sid) {
 }
 
 document.getElementById('search-input').addEventListener('input', renderTable);
-document.getElementById('filter-stage').addEventListener('change', renderTable);
 document.getElementById('filter-status').addEventListener('change', renderTable);
 
 loadConfig();
