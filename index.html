@@ -445,8 +445,8 @@
 <div style="max-width:680px;margin:0 auto;">
   <div class="top-bar"></div>
 </div>
-<div class="card header-card" style="position:relative;">
-  <div id="notice-title" style="position:absolute;top:18px;right:24px;font-size:15px;color:#202124;font-weight:500;"></div>
+<div class="card header-card">
+  <div id="notice-title" style="text-align:right;font-size:15px;color:#202124;font-weight:500;margin-bottom:14px;"></div>
   <div class="form-desc" id="notice-body" style="border-top:none;padding-top:0;">
     <!-- 관리자 화면에서 편집한 안내문 내용이 여기 표시됩니다 -->
   </div>
@@ -513,11 +513,12 @@
     <div class="section-title-bar">📚 필수 수업 신청</div>
     <div class="card">
       <div class="form-desc" style="border-top:none;padding-top:0;">
-        <p>아래 설명을 확인하신 후, 수강을 희망하는 수업의 선생님을 선택해 주세요.</p>
+        <p>아래 내용을 확인하신 후, 수강을 희망하는 수업의 선생님을 선택해 주세요.</p>
         <p id="classchoice-jaseup-note">※ 수업은 최소 3개 이상 선택해 주시고, 수강하지 않을 과목은 <strong>'자습'</strong>을 선택해 주세요.<br>
         (자습 선택은 수업 수에 포함되지 않습니다.)</p>
         <p>※ 국/수/영 수업은 입소 이후 2주 단위로 변경 신청을 받으며, 탐구 수업은 상시 변경 가능합니다. (행정실 문의)</p>
         <p>※ 수강 인원에 따라 일부 수업의 경우 라이브(Live) 수업으로 배정될 수 있습니다.</p>
+        <p>※ 학생과 상의 후 신청하는 경우 교재 준비를 위해 입소 3일전에는 응답해주셔야 합니다.</p>
       </div>
     </div>
     <div class="card">
@@ -688,42 +689,42 @@ function displayLabel(val) {
 const questions = [
   {
     id: 'q1',
-    label: '1. 수강 희망하는 국어(독서) 선생님을 선택해주세요.',
+    label: '1. 국어(독서) 선생님을 선택해주세요.',
     options: ['이정수 선생님','류재민 선생님(LIVE 수업 배정될 수 있음)','박금병 선생님','이창훈 선생님','홍지운 선생님','자습']
   },
   {
     id: 'q2',
-    label: '2. 수강 희망하는 국어(문학) 선생님을 선택해 주세요.',
+    label: '2. 국어(문학) 선생님을 선택해 주세요.',
     options: ['고광수 선생님','이승모 선생님(LIVE 수업 배정될 수 있음)','신동민 선생님','김한솔 선생님','한승 선생님','자습']
   },
   {
     id: 'q3',
-    label: '3. 수강 희망하는 국어 선택(언어와매체/화법과 작문) 선생님을 선택해 주세요.',
+    label: '3. 국어 선택(언어와매체/화법과 작문) 선생님을 선택해 주세요.',
     options: ['백환 선생님(언어와매체)','윤권철 선생님(언어와매체)','이정일 선생님(언어와매체)','윤민 선생님(언어와매체)','김성준 선생님(화법과작문)','자습']
   },
   {
     id: 'q4',
-    label: '4. 수강 희망하는 수학(수학Ⅰ) 선생님을 선택해 주세요.',
+    label: '4. 수학(수학Ⅰ) 선생님을 선택해 주세요.',
     options: ['송준석 선생님','황지현 선생님','권현석 선생님(LIVE 수업 배정될 수 있음)','김치헌 선생님','신현식 선생님','자습']
   },
   {
     id: 'q5',
-    label: '5. 수강 희망하는 수학(수학Ⅱ) 선생님을 선택해 주세요.',
+    label: '5. 수학(수학Ⅱ) 선생님을 선택해 주세요.',
     options: ['손승연 선생님(LIVE 수업 배정될 수 있음)','신민우 선생님','백종석 선생님','이상훈 선생님','자습']
   },
   {
     id: 'q6',
-    label: '6. 수강 희망하는 수학(미적분/확률과통계) 선생님을 선택해 주세요.',
+    label: '6. 수학(미적분/확률과통계) 선생님을 선택해 주세요.',
     options: ['김범준 선생님(미적분/LIVE 수업 배정될 수 있음)','강호길 선생님(미적분)','이정환 선생님(미적분)','이종완 선생님(미적분)','김도혁 선생님(미적분)','은종찬 선생님(확률과 통계)','자습']
   },
   {
     id: 'q7',
-    label: '7. 수강 희망하는 영어 선생님을 선택해 주세요.',
+    label: '7. 영어 선생님을 선택해 주세요.',
     options: ['김대순 선생님','지윤경 선생님','류지수 선생님','최은정 선생님','고연승 선생(LIVE 수업 배정될 수 있음)','오태수 선생님','자습']
   },
   {
     id: 'q8',
-    label: '8. 수강 희망하는 탐구 선생님을 선택해 주세요.',
+    label: '8. 탐구 선생님을 선택해 주세요.',
     isTangg: true,
     options: [
       // 물리학Ⅰ
@@ -1302,7 +1303,7 @@ function applyScholarshipRestriction() {
   if (tanggJaseupCount < 0) tanggJaseupCount = 0;
   document.querySelectorAll('input[name="tangg-jaseup"]').forEach(r => { if (r.value === '0') r.checked = true; });
   const note = document.getElementById('classchoice-jaseup-note');
-  if (note) note.innerHTML = '※ 모든 과목에서 수강을 희망하는 수업의 선생님을 선택해 주세요.';
+  if (note) note.innerHTML = '※ 수강 희망하는 수업의 선생님을 선택해 주세요.';
   updateTanggUI();
   updateGlobalJaseupBanner();
 }
