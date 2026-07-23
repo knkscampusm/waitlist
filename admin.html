@@ -168,6 +168,7 @@
       <table>
         <thead>
           <tr>
+            <th>전형명</th>
             <th>수험번호</th>
             <th>이름</th>
             <th>성별</th>
@@ -180,7 +181,7 @@
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+          <tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -611,7 +612,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
-    `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+    `<tr><td colspan="10" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
 let defaultTabApplied = false;
@@ -686,7 +687,7 @@ function renderTable() {
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+      '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
     return;
   }
 
@@ -720,6 +721,7 @@ function renderTable() {
       </div>` : '';
     return `
       <tr>
+        <td>${s.admissionType || ''}</td>
         <td>${s.sid || ''}</td>
         <td>${s.name || ''}</td>
         <td>${s.gender || ''}</td>
