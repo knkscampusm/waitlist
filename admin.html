@@ -632,11 +632,11 @@ function renderTable() {
       'ABCDEFGHIJKLMNOPQR'.split('').map(g =>
         `<option value="${g}" ${s.groupLetter === g ? 'selected' : ''}>${g}</option>`)
     ).join('');
-    const banCell = `
+    const banCell = s.status === 'enroll' ? `
       <div style="display:flex;gap:4px;">
         <select onchange="updateBanGroup('${s.sid}','ban',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${banOptions}</select>
         <select onchange="updateBanGroup('${s.sid}','groupLetter',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${groupOptions}</select>
-      </div>`;
+      </div>` : '';
     return `
       <tr>
         <td>${s.sid || ''}</td>
