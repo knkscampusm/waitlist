@@ -175,10 +175,11 @@
             <th>개인 링크</th>
             <th>입소여부 응답</th>
             <th>수업신청</th>
+            <th>반</th>
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr><td colspan="8" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -529,7 +530,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
-    `<tr><td colspan="8" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+    `<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
 let defaultTabApplied = false;
@@ -604,7 +605,7 @@ function renderTable() {
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+      '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
     return;
   }
 
@@ -623,6 +624,19 @@ function renderTable() {
         ${statusBadge}${s.status === 'enroll' && s.desiredDate ? `<span style="font-size:12px;color:#555;margin-left:8px;">${s.desiredDate}</span>` : ''}${statusLockCb}
       </div>`;
     const classCell = `<div style="display:flex;align-items:center;">${classBadge}${classLockCb}</div>`;
+    const banOptions = ['<option value="">-</option>'].concat(
+      Array.from({ length: 9 }, (_, i) => i + 1).map(n =>
+        `<option value="${n}" ${String(s.ban) === String(n) ? 'selected' : ''}>${n}반</option>`)
+    ).join('');
+    const groupOptions = ['<option value="">-</option>'].concat(
+      'ABCDEFGHIJKLMNOPQR'.split('').map(g =>
+        `<option value="${g}" ${s.groupLetter === g ? 'selected' : ''}>${g}그룹</option>`)
+    ).join('');
+    const banCell = `
+      <div style="display:flex;gap:4px;">
+        <select onchange="updateBanGroup('${s.sid}','ban',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${banOptions}</select>
+        <select onchange="updateBanGroup('${s.sid}','groupLetter',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${groupOptions}</select>
+      </div>`;
     return `
       <tr>
         <td>${s.sid || ''}</td>
@@ -633,6 +647,7 @@ function renderTable() {
         <td><button class="btn btn-outline btn-sm" onclick="copyLink('${link}', this)">링크 복사</button></td>
         <td>${statusCell}</td>
         <td>${classCell}</td>
+        <td>${banCell}</td>
       </tr>`;
   }).join('');
 }
@@ -640,6 +655,14 @@ function renderTable() {
 async function toggleLock(sid, field, checked) {
   try {
     await db.collection('waitlist_students').doc(sid).set({ [field]: checked }, { merge: true });
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  }
+}
+
+async function updateBanGroup(sid, field, value) {
+  try {
+    await db.collection('waitlist_students').doc(sid).set({ [field]: value }, { merge: true });
   } catch (e) {
     alert('저장 실패: ' + e.message);
   }
