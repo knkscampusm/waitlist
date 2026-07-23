@@ -626,11 +626,11 @@ function renderTable() {
     const classCell = `<div style="display:flex;align-items:center;">${classBadge}${classLockCb}</div>`;
     const banOptions = ['<option value="">-</option>'].concat(
       Array.from({ length: 9 }, (_, i) => i + 1).map(n =>
-        `<option value="${n}" ${String(s.ban) === String(n) ? 'selected' : ''}>${n}반</option>`)
+        `<option value="${n}" ${String(s.ban) === String(n) ? 'selected' : ''}>${n}</option>`)
     ).join('');
     const groupOptions = ['<option value="">-</option>'].concat(
       'ABCDEFGHIJKLMNOPQR'.split('').map(g =>
-        `<option value="${g}" ${s.groupLetter === g ? 'selected' : ''}>${g}그룹</option>`)
+        `<option value="${g}" ${s.groupLetter === g ? 'selected' : ''}>${g}</option>`)
     ).join('');
     const banCell = `
       <div style="display:flex;gap:4px;">
