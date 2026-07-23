@@ -587,6 +587,14 @@ function renderTable() {
     return true;
   });
 
+  // 입소희망 → 대기연장 → 대기취소 → 미응답 순으로 정렬
+  const STATUS_ORDER = { enroll: 0, extend: 1, cancel: 2 };
+  list.sort((a, b) => {
+    const pa = a.status ? (STATUS_ORDER[a.status] ?? 3) : 3;
+    const pb = b.status ? (STATUS_ORDER[b.status] ?? 3) : 3;
+    return pa - pb;
+  });
+
   currentFilteredList = list;
 
   const maleCount = list.filter(s => (s.gender || '').startsWith('남')).length;
