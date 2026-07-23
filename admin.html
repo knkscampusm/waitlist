@@ -246,7 +246,7 @@
     <span class="close-x" data-close="modal-linksettings">✕</span>
     <h3>🔗 개인 링크 기본 주소</h3>
     <div class="field-row">
-      <input type="url" id="base-url" value="https://knkscampusm.github.io/wait/index.html" placeholder="https://knkscampusm.github.io/wait/index.html">
+      <input type="url" id="base-url" value="https://knkscampusm.github.io/waitlist/index.html" placeholder="https://knkscampusm.github.io/waitlist/index.html">
     </div>
     <div style="font-size:12px;color:#888;">학생별 링크 = 이 주소 + <code>?c=수험번호</code> (수험번호가 짧아서 별도 단축 서비스 없이 그대로 사용합니다)</div>
     <button class="btn btn-primary" id="btn-save-linksettings" style="margin-top:14px;">저장</button>
@@ -273,7 +273,7 @@ const STATUS_LABEL = { enroll: '입소 희망', extend: '대기 연장', cancel:
 let allStudents = [];
 let allBatches = [];
 let currentTab = '__all__';
-let baseUrl = 'https://knkscampusm.github.io/wait/index.html';
+let baseUrl = 'https://knkscampusm.github.io/waitlist/index.html';
 let currentFilteredList = [];
 
 // ====== 모달 공통 ======
@@ -455,6 +455,7 @@ function copyEnrollList() {
   });
 }
 document.getElementById('btn-copy-list').addEventListener('click', copyEnrollList);
+
 
 async function handleFile(file) {
   showMsg('upload-status', 'info', '엑셀을 읽는 중입니다…');
