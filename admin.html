@@ -300,6 +300,15 @@ Good Better Best
   </div>
 </div>
 
+<!-- 모달: 학생 기본정보 (이름 클릭 시) -->
+<div class="modal-bg" id="modal-info">
+  <div class="modal">
+    <span class="close-x" data-close="modal-info">✕</span>
+    <h3 id="modal-info-name">학생 정보</h3>
+    <div id="modal-info-body"></div>
+  </div>
+</div>
+
 <script>
 const Q_LABELS = {
   q1: '국어(독서)', q2: '국어(문학)', q3: '국어선택', q4: '수학Ⅰ',
@@ -466,6 +475,16 @@ fileInput.addEventListener('change', (e) => {
 
 function excelDateToYMD(raw) {
   if (raw == null || raw === '') return '';
+  if (typeof raw === 'number') {
+    // 엑셀 날짜 일련번호 → YYYY-MM-DD
+    const d = new Date(Math.round((raw - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  }
   let s = String(raw).trim();
   if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -579,6 +598,10 @@ async function handleFile(file) {
         stage: String(row['단계'] || '').trim(),
         applyPeriod: String(row['원서접수기간'] || '').trim(),
         note: String(row['비고상세'] || '').trim(),
+        applyDate: excelDateToYMD(row['접수일']),
+        remark: String(row['비고'] || '').trim(),
+        renewalDate: excelDateToYMD(row['갱신일']),
+        desiredDateExcel: excelDateToYMD(row['입소희망일']),
         batchId: batchId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
@@ -723,7 +746,7 @@ function renderTable() {
       <tr>
         <td>${s.admissionType || ''}</td>
         <td>${s.sid || ''}</td>
-        <td>${s.name || ''}</td>
+        <td><a href="javascript:void(0)" onclick="openInfoModal('${s.sid}')" style="color:#00ADAA;text-decoration:underline;cursor:pointer;">${s.name || ''}</a></td>
         <td>${s.gender || ''}</td>
         <td>${s.phone || ''}</td>
         <td>${s.parentPhone || ''}</td>
@@ -770,6 +793,20 @@ function openDetail(sid) {
   rows += `<div class="row"><span class="k">제출 시각</span><span>${fmtDate(s.classSubmittedAt)}</span></div>`;
   document.getElementById('modal-body').innerHTML = rows;
   openModal('modal-detail');
+}
+
+function openInfoModal(sid) {
+  const s = allStudents.find(x => x.sid === sid);
+  if (!s) return;
+  document.getElementById('modal-info-name').textContent = `${s.name} (${s.sid}) 정보`;
+  const rows = [
+    ['접수일', s.applyDate || '-'],
+    ['비고', s.remark || '-'],
+    ['갱신일', s.renewalDate || '-'],
+    ['입소희망일', s.desiredDateExcel || '-'],
+  ].map(([k, v]) => `<div class="row"><span class="k">${k}</span><span>${v}</span></div>`).join('');
+  document.getElementById('modal-info-body').innerHTML = rows;
+  openModal('modal-info');
 }
 
 document.getElementById('search-input').addEventListener('input', renderTable);
