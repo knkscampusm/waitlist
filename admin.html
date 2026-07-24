@@ -206,12 +206,19 @@
     <div class="panel">
       <div class="panel-title">📊 월별 대기/입소/취소 통계</div>
       <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">
-        "대기중"은 접수일 이후 ~ 응답(입소·취소) 전까지로 계산됩니다 (대기연장은 계속 대기중으로 처리).<br>
-        "부른 인원"은 해당 날짜에 명단 업로드(탭 생성)된 학생 수이며, 입소/취소는 그 학생들의 <b>현재 최종 응답 기준</b>입니다 (엑셀에 접수일 값이 없는 학생은 대기중 집계에서 빠집니다).
+        아래 형식의 엑셀(No/모집반/전형방법/수험번호/학생명/생년월일/성별/대기접수한 날짜/대기 충원(또는 취소)/접수 구분/입소/퇴소)을 업로드하면 통계가 계산됩니다.<br>
+        "대기중"은 <b>대기접수한 날짜</b> 이후 ~ <b>대기 충원(또는 취소) 날짜</b> 전까지로 계산됩니다.
       </div>
+      <div class="upload-drop" id="stats-drop-zone" style="margin-bottom:16px;">
+        통계용 엑셀 파일을 끌어다 놓거나 클릭해서 선택하세요 (.xlsx)<br>
+        <span style="font-size:11.5px;color:#aaa;">같은 수험번호+대기접수일 조합은 덮어쓰기, 새로운 건은 추가됩니다.</span>
+        <input type="file" id="stats-file-input" accept=".xlsx,.xls" style="display:none;">
+      </div>
+      <div class="status-msg" id="stats-upload-status"></div>
       <div class="toolbar">
         <input type="month" id="stats-month">
         <button class="btn btn-primary btn-sm" id="btn-stats-run">조회</button>
+        <span class="count-pill" id="stats-record-count"></span>
       </div>
       <div class="table-scroll">
         <table>
@@ -885,51 +892,132 @@ document.getElementById('btn-view-stats').addEventListener('click', () => {
 
 document.getElementById('btn-stats-run').addEventListener('click', renderStats);
 
-function tsToISODate(ts) {
-  if (!ts || !ts.toDate) return null;
-  const d = ts.toDate();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+let statsRecords = [];
+
+// ====== 통계용 히스토리 엑셀 업로드 ======
+const statsDropZone = document.getElementById('stats-drop-zone');
+const statsFileInput = document.getElementById('stats-file-input');
+statsDropZone.addEventListener('click', () => statsFileInput.click());
+statsDropZone.addEventListener('dragover', (e) => { e.preventDefault(); statsDropZone.classList.add('dragover'); });
+statsDropZone.addEventListener('dragleave', () => statsDropZone.classList.remove('dragover'));
+statsDropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  statsDropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleStatsFile(e.dataTransfer.files[0]);
+});
+statsFileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleStatsFile(e.target.files[0]);
+});
+
+function outcomeFromText(text) {
+  const t = String(text || '').trim();
+  if (t.includes('취소')) return 'cancel';
+  if (t.includes('충원') || t.includes('입소')) return 'enroll';
+  return null;
 }
+
+async function handleStatsFile(file) {
+  showMsg('stats-upload-status', 'info', '엑셀을 읽는 중입니다…');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rowsRaw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    if (!rowsRaw.length) {
+      showMsg('stats-upload-status', 'err', '데이터가 없는 파일입니다.');
+      return;
+    }
+
+    let batch = db.batch();
+    let count = 0, batchCount = 0;
+
+    for (const row of rowsRaw) {
+      const sid = String(row['수험번호'] || '').trim();
+      const applyDate = excelDateToYMD(row['대기접수한 날짜']);
+      if (!sid || !applyDate) continue;
+      const docId = `${sid}_${applyDate}`; // 같은 학생이 여러 번 대기 접수한 경우도 구분됨
+      const docRef = db.collection('waitlist_stats_records').doc(docId);
+      const data = {
+        sid,
+        name: String(row['학생명'] || '').trim(),
+        birth: excelDateToYMD(row['생년월일']),
+        gender: String(row['성별'] || '').trim(),
+        recruitRound: String(row['모집반'] || '').trim(),
+        admissionType: String(row['전형방법'] || '').trim(),
+        applyDate,
+        resolvedDate: excelDateToYMD(row['대기 충원(또는 취소)']),
+        outcomeText: String(row['접수 구분'] || '').trim(),
+        outcome: outcomeFromText(row['접수 구분']),
+        enrollDate: excelDateToYMD(row['입소']),
+        withdrawDate: excelDateToYMD(row['퇴소']),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      batch.set(docRef, data, { merge: true });
+      count++; batchCount++;
+      if (batchCount >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    }
+    if (batchCount > 0) await batch.commit();
+
+    showMsg('stats-upload-status', 'ok', `${count}건 업로드 완료.`);
+    statsFileInput.value = '';
+    await loadStatsRecords();
+  } catch (e) {
+    showMsg('stats-upload-status', 'err', '업로드 실패: ' + e.message);
+  }
+}
+
+async function loadStatsRecords() {
+  try {
+    const snap = await db.collection('waitlist_stats_records').get();
+    statsRecords = snap.docs.map(d => d.data());
+    document.getElementById('stats-record-count').textContent = `${statsRecords.length}건 저장됨`;
+  } catch (e) {
+    document.getElementById('stats-record-count').textContent = '';
+  }
+}
+loadStatsRecords();
 
 function renderStats() {
   const monthVal = document.getElementById('stats-month').value; // "YYYY-MM"
   if (!monthVal) { alert('월을 선택해 주세요.'); return; }
+  if (!statsRecords.length) {
+    document.getElementById('stats-tbody').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:24px;">업로드된 통계 데이터가 없습니다. 먼저 엑셀을 업로드해 주세요.</td></tr>';
+    return;
+  }
   const [year, month] = monthVal.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
-
-  // batchId -> "MM/DD" (부른 날짜, 연도 구분 없음)
-  const batchDateMap = {};
-  allBatches.forEach(b => { batchDateMap[b.id] = b.dateStr; });
 
   const rows = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const mmdd = `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
 
-    // 대기중 인원: 접수일 <= 오늘 AND (입소/취소로 확정된 응답일 <= 오늘) 이 아님 (연장/미응답/미래응답은 계속 대기중)
-    const waiting = allStudents.filter(s => {
-      if (!s.applyDate || s.applyDate > iso) return false;
-      if (s.status === 'enroll' || s.status === 'cancel') {
-        const resolvedDate = tsToISODate(s.statusSubmittedAt);
-        if (resolvedDate && resolvedDate <= iso) return false; // 이미 그 전에 해결됨
-      }
+    // 대기중: 대기접수한 날짜 <= 오늘 AND (대기 충원/취소 날짜가 없거나 오늘 이후)
+    const waiting = statsRecords.filter(r => {
+      if (!r.applyDate || r.applyDate > iso) return false;
+      if (r.resolvedDate && r.resolvedDate <= iso) return false;
       return true;
     });
     const waitingByType = {};
     const waitingByGender = {};
-    waiting.forEach(s => {
-      const t = s.admissionType || '미상';
-      const g = s.gender || '미상';
+    waiting.forEach(r => {
+      const t = r.admissionType || '미상';
+      const g = r.gender || '미상';
       waitingByType[t] = (waitingByType[t] || 0) + 1;
       waitingByGender[g] = (waitingByGender[g] || 0) + 1;
     });
 
-    // 부른 인원: 그 날짜에 업로드(탭 생성)된 학생들
-    const called = allStudents.filter(s => batchDateMap[s.batchId] === mmdd);
-    const enrollCount = called.filter(s => s.status === 'enroll').length;
-    const cancelCount = called.filter(s => s.status === 'cancel').length;
+    // 부른 인원: 그 날짜에 대기 충원(또는 취소) 처리된 건
+    const called = statsRecords.filter(r => r.resolvedDate === iso);
+    const enrollCount = called.filter(r => r.outcome === 'enroll').length;
+    const cancelCount = called.filter(r => r.outcome === 'cancel').length;
 
-    rows.push({ iso, mmdd, waitingTotal: waiting.length, waitingByType, waitingByGender, calledCount: called.length, enrollCount, cancelCount });
+    rows.push({ iso, waitingTotal: waiting.length, waitingByType, waitingByGender, calledCount: called.length, enrollCount, cancelCount });
   }
 
   document.getElementById('stats-tbody').innerHTML = rows.map(r => {
@@ -937,7 +1025,7 @@ function renderStats() {
     const genderStr = Object.entries(r.waitingByGender).map(([k, v]) => `${k} ${v}`).join('<br>') || '-';
     return `
       <tr>
-        <td>${r.mmdd}</td>
+        <td>${r.iso}</td>
         <td>${r.waitingTotal}</td>
         <td style="font-size:11.5px;">${typeStr}</td>
         <td style="font-size:11.5px;">${genderStr}</td>
