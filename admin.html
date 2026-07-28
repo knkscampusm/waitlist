@@ -51,6 +51,8 @@
   .btn-excel:hover { background:#1a5c38; }
   .btn-copy { background:#2b6cb0; color:#fff; padding:9px 18px; font-size:13px; font-weight:600; }
   .btn-copy:hover { background:#245a92; }
+  .btn-danger-solid { background:#c0392b; color:#fff; padding:9px 18px; font-size:13px; font-weight:600; border:none; border-radius:6px; cursor:pointer; }
+  .btn-danger-solid:hover { background:#a53125; }
   .btn-outline:hover { background:#E0F7F6; }
   .btn-sm { padding:5px 10px; font-size:12px; }
   .btn:disabled { background:#ccc; color:#fff; cursor:not-allowed; }
@@ -174,6 +176,7 @@
       </select>
       <button class="btn btn-excel" id="btn-export-sms">EXCEL</button>
       <button class="btn btn-copy" id="btn-copy-list">COPY</button>
+      <button class="btn btn-danger-solid" id="btn-copy-noshow">미응답 COPY</button>
       <span class="count-pill" id="count-pill">0명</span>
     </div>
     <div class="table-scroll">
@@ -604,6 +607,22 @@ function copyEnrollList() {
   });
 }
 document.getElementById('btn-copy-list').addEventListener('click', copyEnrollList);
+
+// ====== 대기연장/대기취소/미응답 수험번호만 열 데이터로 복사 ======
+function copyNonEnrollSids() {
+  const qualifying = currentFilteredList.filter(s => s.status === 'extend' || s.status === 'cancel' || !s.status);
+  if (!qualifying.length) {
+    alert('복사할 대상이 없습니다.');
+    return;
+  }
+  const text = qualifying.map(s => s.sid || '').join('\r\n');
+  navigator.clipboard.writeText(text).then(() => {
+    alert(`복사되었습니다. (${qualifying.length}명)`);
+  }).catch(() => {
+    alert('복사에 실패했습니다.');
+  });
+}
+document.getElementById('btn-copy-noshow').addEventListener('click', copyNonEnrollSids);
 
 
 async function handleFile(file) {
