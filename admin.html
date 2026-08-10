@@ -760,24 +760,13 @@ function renderTable() {
     return true;
   });
 
-  // 정렬 우선순위:
-  // 0) 입소여부·수업신청 둘 다 확정
-  // 1) 입소여부만 확정 (수업신청 미확정)
-  // 2) 입소희망이지만 아직 확정 전
-  // 3) 대기연장
-  // 4) 대기취소
-  // 5) 미응답
-  function sortPriority(s) {
-    if (s.status === 'enroll') {
-      if (s.statusLocked && s.classLocked) return 0;
-      if (s.statusLocked) return 1;
-      return 2;
-    }
-    if (s.status === 'extend') return 3;
-    if (s.status === 'cancel') return 4;
-    return 5;
+  // 제출시각(입소여부 응답 또는 수업신청 중 더 최근 것) 기준 최신순 정렬. 미응답은 맨 아래.
+  function lastActivityMs(s) {
+    const t1 = s.statusSubmittedAt && s.statusSubmittedAt.toDate ? s.statusSubmittedAt.toDate().getTime() : 0;
+    const t2 = s.classSubmittedAt && s.classSubmittedAt.toDate ? s.classSubmittedAt.toDate().getTime() : 0;
+    return Math.max(t1, t2);
   }
-  list.sort((a, b) => sortPriority(a) - sortPriority(b));
+  list.sort((a, b) => lastActivityMs(b) - lastActivityMs(a));
 
   currentFilteredList = list;
 
