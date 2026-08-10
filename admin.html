@@ -53,6 +53,11 @@
   .btn-copy:hover { background:#245a92; }
   .btn-danger-solid { background:#c0392b; color:#fff; padding:9px 18px; font-size:13px; font-weight:600; border:none; border-radius:6px; cursor:pointer; }
   .btn-danger-solid:hover { background:#a53125; }
+  .sort-toggle { display:flex; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
+  .sort-toggle-btn {
+    border:none; background:#fff; color:#666; padding:8px 12px; font-size:12.5px; font-weight:500; cursor:pointer;
+  }
+  .sort-toggle-btn.active { background:#00ADAA; color:#fff; }
   .btn-outline:hover { background:#E0F7F6; }
   .btn-sm { padding:5px 10px; font-size:12px; }
   .btn:disabled { background:#ccc; color:#fff; cursor:not-allowed; }
@@ -174,6 +179,10 @@
         <option value="extend">대기 연장</option>
         <option value="cancel">대기 취소</option>
       </select>
+      <div class="sort-toggle">
+        <button class="sort-toggle-btn active" id="btn-sort-recent">최신순</button>
+        <button class="sort-toggle-btn" id="btn-sort-priority">확정필요순</button>
+      </div>
       <button class="btn btn-excel" id="btn-export-sms">EXCEL</button>
       <button class="btn btn-copy" id="btn-copy-list">COPY</button>
       <button class="btn btn-danger-solid" id="btn-copy-noshow">미응답 COPY</button>
@@ -369,6 +378,7 @@ const STATUS_LABEL = { enroll: '입소 희망', extend: '대기 연장', cancel:
 let allStudents = [];
 let allBatches = [];
 let currentTab = '__all__';
+let sortMode = 'recent'; // 'recent' | 'priority'
 let baseUrl = 'https://knkscampusm.github.io/waitlist/index.html';
 let currentFilteredList = [];
 
@@ -760,13 +770,27 @@ function renderTable() {
     return true;
   });
 
-  // 제출시각(입소여부 응답 또는 수업신청 중 더 최근 것) 기준 최신순 정렬. 미응답은 맨 아래.
+  // 정렬: 최신순(제출시각 최근순) 또는 확정필요순(처리 안 된 것 우선)
   function lastActivityMs(s) {
     const t1 = s.statusSubmittedAt && s.statusSubmittedAt.toDate ? s.statusSubmittedAt.toDate().getTime() : 0;
     const t2 = s.classSubmittedAt && s.classSubmittedAt.toDate ? s.classSubmittedAt.toDate().getTime() : 0;
     return Math.max(t1, t2);
   }
-  list.sort((a, b) => lastActivityMs(b) - lastActivityMs(a));
+  function sortPriority(s) {
+    if (s.status === 'enroll') {
+      if (s.statusLocked && s.classLocked) return 0;
+      if (s.statusLocked) return 1;
+      return 2;
+    }
+    if (s.status === 'extend') return 3;
+    if (s.status === 'cancel') return 4;
+    return 5;
+  }
+  if (sortMode === 'priority') {
+    list.sort((a, b) => sortPriority(a) - sortPriority(b));
+  } else {
+    list.sort((a, b) => lastActivityMs(b) - lastActivityMs(a));
+  }
 
   currentFilteredList = list;
 
@@ -875,6 +899,18 @@ function openInfoModal(sid) {
   openModal('modal-info');
 }
 
+document.getElementById('btn-sort-recent').addEventListener('click', () => {
+  sortMode = 'recent';
+  document.getElementById('btn-sort-recent').classList.add('active');
+  document.getElementById('btn-sort-priority').classList.remove('active');
+  renderTable();
+});
+document.getElementById('btn-sort-priority').addEventListener('click', () => {
+  sortMode = 'priority';
+  document.getElementById('btn-sort-priority').classList.add('active');
+  document.getElementById('btn-sort-recent').classList.remove('active');
+  renderTable();
+});
 document.getElementById('search-input').addEventListener('input', renderTable);
 document.getElementById('filter-status').addEventListener('change', renderTable);
 
