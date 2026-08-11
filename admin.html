@@ -655,13 +655,17 @@ async function handleFile(file) {
     const batchRef = db.collection('waitlist_batches').doc();
     const batchId = batchRef.id;
 
+    // 이미 존재하는 학생(재업로드 대상)은 탭 소속을 건드리지 않기 위해 기존 수험번호 목록 확보
+    const existingSids = new Set(allStudents.map(s => s.sid));
+
     let batch = db.batch();
-    let count = 0, batchCount = 0;
+    let count = 0, batchCount = 0, newCount = 0;
 
     for (const row of rows) {
       const sid = String(row['수험번호'] || '').trim();
       if (!sid) continue;
       const docRef = db.collection('waitlist_students').doc(sid);
+      const isNew = !existingSids.has(sid);
       const data = {
         sid,
         name: String(row['성명'] || '').trim(),
@@ -678,9 +682,13 @@ async function handleFile(file) {
         remark: String(row['비고'] || '').trim(),
         renewalDate: excelDateToYMD(row['갱신일']),
         desiredDateExcel: excelDateToYMD(row['입소희망일']),
-        batchId: batchId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
+      // 처음 등록되는 학생만 이번 업로드 탭(batchId)에 배정 — 이미 있던 학생은 원래 탭 소속 유지
+      if (isNew) {
+        data.batchId = batchId;
+        newCount++;
+      }
       // merge: true → 기존 status/desiredDate/classAnswers 등 응답 데이터는 그대로 유지됨
       batch.set(docRef, data, { merge: true });
       count++; batchCount++;
@@ -693,12 +701,15 @@ async function handleFile(file) {
     }
     if (batchCount > 0) await batch.commit();
 
-    await batchRef.set({
-      dateStr, seq, count,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-
-    showMsg('upload-status', 'ok', `${count}명 업로드 완료 (기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
+    if (newCount > 0) {
+      await batchRef.set({
+        dateStr, seq, count: newCount,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showMsg('upload-status', 'ok', `${count}명 처리 완료 (신규 ${newCount}명 · 기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
+    } else {
+      showMsg('upload-status', 'ok', `${count}명 처리 완료 (신규 학생 없음 · 기존 응답 데이터는 유지됩니다). 전부 재업로드라 새 탭은 생성되지 않았습니다.`);
+    }
     fileInput.value = '';
   } catch (e) {
     showMsg('upload-status', 'err', '업로드 실패: ' + e.message);
