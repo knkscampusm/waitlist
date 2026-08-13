@@ -603,12 +603,34 @@ function notifyJandi(message) {
   }).catch(() => { /* 알림 전송 실패해도 학생 제출 자체에는 영향 없음 */ });
 }
 
+// 입소여부 응답 알림 여부/문구 판별 (최초 제출: 알림, 동일값 재제출: 알림 없음, 값 변경: [수정] 알림)
+function buildStatusNotifyPrefix(newStatus, newDesiredDate) {
+  const isFirst = !prevStatus;
+  const isSame = !isFirst && prevStatus === newStatus &&
+    (newStatus !== 'enroll' || prevDesiredDate === newDesiredDate);
+  if (isFirst) return { send: true, prefix: '' };
+  if (isSame) return { send: false, prefix: '' };
+  return { send: true, prefix: '[수정] ' };
+}
+
+// 수업신청 알림 여부/문구 판별
+function buildClassNotifyPrefix(newAnswers) {
+  const isFirst = !prevClassAnswers;
+  const isSame = !isFirst && JSON.stringify(prevClassAnswers) === JSON.stringify(newAnswers);
+  if (isFirst) return { send: true, prefix: '' };
+  if (isSame) return { send: false, prefix: '' };
+  return { send: true, prefix: '[수정] ' };
+}
+
 // ====== 전역 상태 ======
 let flowOrder = ['0'];
 let waitlistStatus = null;   // 'enroll' | 'extend' | 'cancel'
 let desiredDate = null;
 let noticeConfig = {};       // Firestore waitlist_config/notice
 let prefillStatus = null;    // 재접속 시 이전 응답 프리필용
+let prevStatus = null;       // 잔디 알림 비교용: 이전 입소여부 응답
+let prevDesiredDate = null;  // 잔디 알림 비교용: 이전 희망일
+let prevClassAnswers = null; // 잔디 알림 비교용: 이전 수업신청 내역
 let studentClassLocked = false; // 관리자가 수업신청을 확정(잠금) 했는지
 let isFullScholarship = false;  // 전형명이 "전액 장학생"인 경우에만 자습 선택 가능
 
@@ -1241,8 +1263,14 @@ document.getElementById('main-form').addEventListener('submit', async (e) => {
 
   // 완료 화면 즉시 표시 후 백그라운드로 Firestore 저장
   showDone('enroll');
-  notifyJandi(`${name}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})`);
-  notifyJandi(`${name}(${studentId}) - 수업신청 완료`);
+  const statusNotif = buildStatusNotifyPrefix('enroll', desiredDate);
+  if (statusNotif.send) {
+    notifyJandi(`${statusNotif.prefix}${name}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})`);
+  }
+  const classNotif = buildClassNotifyPrefix(cleanAnswers);
+  if (classNotif.send) {
+    notifyJandi(`${classNotif.prefix}${name}(${studentId}) - 수업신청 완료`);
+  }
   db.collection('waitlist_students').doc(studentId).set(payload, { merge: true }).catch(() => {});
 });
 
@@ -1250,7 +1278,10 @@ async function submitStatusOnly(status) {
   const studentId = document.getElementById('student-id').value.trim();
   const studentName = document.getElementById('student-name').value.trim();
   showDone(status);
-  notifyJandi(`${studentName}(${studentId}) - ${STATUS_DONE_LABEL[status] || status}`);
+  const notif = buildStatusNotifyPrefix(status, null);
+  if (notif.send) {
+    notifyJandi(`${notif.prefix}${studentName}(${studentId}) - ${STATUS_DONE_LABEL[status] || status}`);
+  }
   try {
     await db.collection('waitlist_students').doc(studentId).set({
       status: status,
@@ -1422,6 +1453,9 @@ function renderStatusOptions() {
     }
 
     const student = studentSnap.data();
+    prevStatus = student.status || null;
+    prevDesiredDate = student.desiredDate || null;
+    prevClassAnswers = student.classAnswers || null;
     noticeConfig = configSnap.exists ? configSnap.data() : {};
 
     // 학생 식별 정보 세팅 (화면 비노출, 저장용)
@@ -1550,7 +1584,10 @@ document.getElementById('btn-next-classchoice').addEventListener('click', async 
   const studentId = document.getElementById('student-id').value.trim();
   const studentName = document.getElementById('student-name').value.trim();
   showDeferred();
-  notifyJandi(`${studentName}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})\n※ 수업신청은 추후 진행 예정`);
+  const notif = buildStatusNotifyPrefix('enroll', desiredDate);
+  if (notif.send) {
+    notifyJandi(`${notif.prefix}${studentName}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})\n※ 수업신청은 추후 진행 예정`);
+  }
   try {
     await db.collection('waitlist_students').doc(studentId).set({
       status: 'enroll',
