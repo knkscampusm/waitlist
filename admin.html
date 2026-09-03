@@ -53,6 +53,11 @@
   .btn-copy:hover { background:#245a92; }
   .btn-danger-solid { background:#c0392b; color:#fff; padding:9px 18px; font-size:13px; font-weight:600; border:none; border-radius:6px; cursor:pointer; }
   .btn-danger-solid:hover { background:#a53125; }
+  .btn-icon-trash {
+    border:1px solid #ddd; background:#fff; color:#c0392b; width:38px; height:38px;
+    border-radius:6px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .btn-icon-trash:hover { background:#fdecea; border-color:#c0392b; }
   .sort-toggle { display:flex; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
   .sort-toggle-btn {
     border:none; background:#fff; color:#666; padding:8px 12px; font-size:12.5px; font-weight:500; cursor:pointer;
@@ -155,6 +160,12 @@
     <button class="btn btn-outline" id="btn-open-upload">📥 명단 업로드</button>
     <button class="btn btn-outline" id="btn-open-linksettings">🔗 링크 설정</button>
     <button class="btn btn-outline" id="btn-open-sms">💬 문자 내용</button>
+    <div style="position:relative;margin-left:auto;">
+      <button class="btn-icon-trash" id="btn-delete-tab-toggle" title="탭 삭제">🗑️</button>
+      <select id="delete-tab-select" style="display:none;position:absolute;top:110%;right:0;z-index:20;min-width:160px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:13px;background:#fff;">
+        <option value="">삭제할 탭 선택</option>
+      </select>
+    </div>
   </div>
 
   <div class="view-toggle">
@@ -762,6 +773,72 @@ function renderTabs() {
     });
   });
 }
+
+// ====== 탭 삭제 (휴지통 아이콘 → 드롭다운에서 선택) ======
+const deleteTabToggle = document.getElementById('btn-delete-tab-toggle');
+const deleteTabSelect = document.getElementById('delete-tab-select');
+
+deleteTabToggle.addEventListener('click', () => {
+  if (deleteTabSelect.style.display === 'none') {
+    deleteTabSelect.innerHTML = '<option value="">삭제할 탭 선택</option>' +
+      allBatches.map(b => `<option value="${b.id}">${batchLabel(b)} (${b.count || 0})</option>`).join('');
+    deleteTabSelect.style.display = 'block';
+    deleteTabSelect.focus();
+  } else {
+    deleteTabSelect.style.display = 'none';
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!deleteTabToggle.contains(e.target) && !deleteTabSelect.contains(e.target)) {
+    deleteTabSelect.style.display = 'none';
+  }
+});
+
+deleteTabSelect.addEventListener('change', async () => {
+  const targetId = deleteTabSelect.value;
+  if (!targetId) return;
+
+  const batch = allBatches.find(b => b.id === targetId);
+  if (!batch) {
+    alert('선택된 탭 정보를 찾을 수 없습니다.');
+    deleteTabSelect.value = '';
+    return;
+  }
+  const label = batchLabel(batch);
+  const linkedStudents = allStudents.filter(s => s.batchId === targetId);
+
+  const ok = confirm(
+    `"${label}" 탭을 삭제하시겠습니까?\n\n` +
+    `이 탭에 소속된 학생 ${linkedStudents.length}명의 데이터가 함께 삭제됩니다.\n` +
+    `(다른 탭의 학생 데이터는 영향받지 않습니다)\n\n` +
+    `이 작업은 되돌릴 수 없습니다.`
+  );
+  if (!ok) {
+    deleteTabSelect.value = '';
+    deleteTabSelect.style.display = 'none';
+    return;
+  }
+
+  deleteTabSelect.disabled = true;
+  try {
+    for (let i = 0; i < linkedStudents.length; i += 400) {
+      const chunk = linkedStudents.slice(i, i + 400);
+      const writeBatch = db.batch();
+      chunk.forEach(s => writeBatch.delete(db.collection('waitlist_students').doc(s.sid)));
+      await writeBatch.commit();
+    }
+    await db.collection('waitlist_batches').doc(targetId).delete();
+    if (currentTab === targetId) currentTab = '__all__';
+    alert(`"${label}" 탭과 학생 ${linkedStudents.length}명이 삭제되었습니다.`);
+  } catch (e) {
+    alert('삭제 중 오류가 발생했습니다: ' + e.message);
+  } finally {
+    deleteTabSelect.disabled = false;
+    deleteTabSelect.value = '';
+    deleteTabSelect.style.display = 'none';
+  }
+});
 
 function fmtDate(ts) {
   if (!ts) return '';
