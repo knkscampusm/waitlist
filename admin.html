@@ -203,6 +203,7 @@
       <table>
         <thead>
           <tr>
+            <th>업로드일</th>
             <th>전형명</th>
             <th>수험번호</th>
             <th>이름</th>
@@ -216,7 +217,7 @@
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
+          <tr><td colspan="11" style="text-align:center;color:#aaa;padding:24px;">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -666,17 +667,13 @@ async function handleFile(file) {
     const batchRef = db.collection('waitlist_batches').doc();
     const batchId = batchRef.id;
 
-    // 이미 존재하는 학생(재업로드 대상)은 탭 소속을 건드리지 않기 위해 기존 수험번호 목록 확보
-    const existingSids = new Set(allStudents.map(s => s.sid));
-
     let batch = db.batch();
-    let count = 0, batchCount = 0, newCount = 0;
+    let count = 0, batchCount = 0;
 
     for (const row of rows) {
       const sid = String(row['수험번호'] || '').trim();
       if (!sid) continue;
       const docRef = db.collection('waitlist_students').doc(sid);
-      const isNew = !existingSids.has(sid);
       const data = {
         sid,
         name: String(row['성명'] || '').trim(),
@@ -693,14 +690,11 @@ async function handleFile(file) {
         remark: String(row['비고'] || '').trim(),
         renewalDate: excelDateToYMD(row['갱신일']),
         desiredDateExcel: excelDateToYMD(row['입소희망일']),
+        batchId: batchId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      // 처음 등록되는 학생만 이번 업로드 탭(batchId)에 배정 — 이미 있던 학생은 원래 탭 소속 유지
-      if (isNew) {
-        data.batchId = batchId;
-        newCount++;
-      }
       // merge: true → 기존 status/desiredDate/classAnswers 등 응답 데이터는 그대로 유지됨
+      // (재업로드해도 항상 이번 탭 날짜로 소속이 갱신됨 — 표에서 "업로드일" 컬럼으로 항상 확인 가능)
       batch.set(docRef, data, { merge: true });
       count++; batchCount++;
 
@@ -712,15 +706,11 @@ async function handleFile(file) {
     }
     if (batchCount > 0) await batch.commit();
 
-    if (newCount > 0) {
-      await batchRef.set({
-        dateStr, seq, count: newCount,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      showMsg('upload-status', 'ok', `${count}명 처리 완료 (신규 ${newCount}명 · 기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
-    } else {
-      showMsg('upload-status', 'ok', `${count}명 처리 완료 (신규 학생 없음 · 기존 응답 데이터는 유지됩니다). 전부 재업로드라 새 탭은 생성되지 않았습니다.`);
-    }
+    await batchRef.set({
+      dateStr, seq, count,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    showMsg('upload-status', 'ok', `${count}명 업로드 완료 (기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
     fileInput.value = '';
   } catch (e) {
     showMsg('upload-status', 'err', '업로드 실패: ' + e.message);
@@ -733,7 +723,7 @@ db.collection('waitlist_students').onSnapshot((snap) => {
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
-    `<tr><td colspan="10" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
+    `<tr><td colspan="11" style="text-align:center;color:#c0392b;padding:24px;">불러오기 실패: ${err.message}</td></tr>`;
 });
 
 let defaultTabApplied = false;
@@ -888,9 +878,12 @@ function renderTable() {
 
   if (!list.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
+      '<tr><td colspan="11" style="text-align:center;color:#aaa;padding:24px;">조건에 맞는 학생이 없습니다.</td></tr>';
     return;
   }
+
+  const batchById = {};
+  allBatches.forEach(b => { batchById[b.id] = b; });
 
   document.getElementById('student-tbody').innerHTML = list.map(s => {
     const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
@@ -920,8 +913,10 @@ function renderTable() {
         <select onchange="updateBanGroup('${s.sid}','ban',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${banOptions}</select>
         <select onchange="updateBanGroup('${s.sid}','groupLetter',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${groupOptions}</select>
       </div>` : '';
+    const uploadDateLabel = batchById[s.batchId] ? batchLabel(batchById[s.batchId]) : '-';
     return `
       <tr>
+        <td>${uploadDateLabel}</td>
         <td>${s.admissionType || ''}</td>
         <td>${s.sid || ''}</td>
         <td><a href="javascript:void(0)" onclick="openInfoModal('${s.sid}')" style="color:#00ADAA;text-decoration:none;cursor:pointer;">${s.name || ''}</a></td>
