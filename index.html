@@ -1256,6 +1256,9 @@ document.getElementById('main-form').addEventListener('submit', async (e) => {
     status: 'enroll',
     desiredDate: desiredDate,
     statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    statusHistory: firebase.firestore.FieldValue.arrayUnion({
+      status: 'enroll', desiredDate: desiredDate || null, submittedAt: new Date().toISOString(),
+    }),
     classAnswers: cleanAnswers,
     classAnswersRaw: rawAnswers,
     classSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1283,9 +1286,11 @@ async function submitStatusOnly(status) {
     notifyJandi(`${notif.prefix}${studentName}(${studentId}) - ${STATUS_DONE_LABEL[status] || status}`);
   }
   try {
+    const historyEntry = { status: status, desiredDate: null, submittedAt: new Date().toISOString() };
     await db.collection('waitlist_students').doc(studentId).set({
       status: status,
       statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      statusHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry),
     }, { merge: true });
   } catch (err) { /* 화면은 이미 완료 표시됨 */ }
 }
@@ -1589,10 +1594,12 @@ document.getElementById('btn-next-classchoice').addEventListener('click', async 
     notifyJandi(`${notif.prefix}${studentName}(${studentId}) - 입소 희망 (희망일: ${desiredDate || '-'})\n※ 수업신청은 추후 진행 예정`);
   }
   try {
+    const historyEntry = { status: 'enroll', desiredDate: desiredDate || null, submittedAt: new Date().toISOString() };
     await db.collection('waitlist_students').doc(studentId).set({
       status: 'enroll',
       desiredDate: desiredDate,
       statusSubmittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      statusHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry),
     }, { merge: true });
   } catch (err) { /* 화면은 이미 안내 표시됨 */ }
 });
