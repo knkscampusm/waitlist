@@ -580,7 +580,7 @@ function exportSmsExcel() {
   }
   const rows = [];
   currentFilteredList.forEach(s => {
-    const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
+    const link = `${baseUrl}?c=${encodeURIComponent(s._id)}`;
     const numbers = [];
     if (s.phone) numbers.push(s.phone);
     if (s.parentPhone && s.parentPhone !== s.phone) numbers.push(s.parentPhone);
@@ -667,13 +667,34 @@ async function handleFile(file) {
     const batchRef = db.collection('waitlist_batches').doc();
     const batchId = batchRef.id;
 
+    // 수험번호별로 "이미 어느 날짜들에 등록되어 있는지" 파악
+    // - 같은 수험번호가 같은 날짜에 또 들어오면 → 중복이라 스킵
+    // - 같은 수험번호가 다른 날짜로 들어오면 → 재호출(대기연장 후 재소집 등)이므로 별도 건으로 새로 등록
+    const batchDateById = {};
+    allBatches.forEach(b => { batchDateById[b.id] = b.dateStr; });
+    const sidDatesSeen = {};
+    allStudents.forEach(s => {
+      const d = batchDateById[s.batchId];
+      if (!sidDatesSeen[s.sid]) sidDatesSeen[s.sid] = new Set();
+      if (d) sidDatesSeen[s.sid].add(d);
+    });
+
     let batch = db.batch();
-    let count = 0, batchCount = 0;
+    let count = 0, batchCount = 0, skippedDup = 0, firstTimeCount = 0, recallCount = 0;
 
     for (const row of rows) {
       const sid = String(row['수험번호'] || '').trim();
       if (!sid) continue;
-      const docRef = db.collection('waitlist_students').doc(sid);
+
+      const seenDates = sidDatesSeen[sid];
+      const isBrandNew = !seenDates;
+      const alreadyHasThisDate = seenDates && seenDates.has(dateStr);
+
+      if (alreadyHasThisDate) { skippedDup++; continue; } // 오늘 날짜로 이미 등록된 건 → 중복 스킵
+
+      // 완전 신규면 수험번호 그대로, 재호출(다른 날짜)이면 수험번호+날짜로 별도 문서 생성
+      const recordId = isBrandNew ? sid : `${sid}_${dateStr.replace('/', '')}`;
+      const docRef = db.collection('waitlist_students').doc(recordId);
       const data = {
         sid,
         name: String(row['성명'] || '').trim(),
@@ -693,10 +714,9 @@ async function handleFile(file) {
         batchId: batchId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      // merge: true → 기존 status/desiredDate/classAnswers 등 응답 데이터는 그대로 유지됨
-      // (재업로드해도 항상 이번 탭 날짜로 소속이 갱신됨 — 표에서 "업로드일" 컬럼으로 항상 확인 가능)
-      batch.set(docRef, data, { merge: true });
+      batch.set(docRef, data); // 신규 문서 생성 (merge 아님)
       count++; batchCount++;
+      if (isBrandNew) firstTimeCount++; else recallCount++;
 
       if (batchCount >= 400) {
         await batch.commit();
@@ -706,11 +726,15 @@ async function handleFile(file) {
     }
     if (batchCount > 0) await batch.commit();
 
-    await batchRef.set({
-      dateStr, seq, count,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-    showMsg('upload-status', 'ok', `${count}명 업로드 완료 (기존 응답 데이터는 유지됩니다). "${dateStr}" 탭이 생성되었습니다.`);
+    if (count > 0) {
+      await batchRef.set({
+        dateStr, seq, count,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showMsg('upload-status', 'ok', `신규 ${firstTimeCount}명, 재호출(다른 날짜 재등장) ${recallCount}명 등록 완료 (오늘 날짜 중복 ${skippedDup}명 스킵). "${dateStr}" 탭이 생성되었습니다.`);
+    } else {
+      showMsg('upload-status', 'ok', `등록할 항목이 없습니다 (전부 오늘 날짜로 이미 등록됨: ${skippedDup}명).`);
+    }
     fileInput.value = '';
   } catch (e) {
     showMsg('upload-status', 'err', '업로드 실패: ' + e.message);
@@ -719,7 +743,7 @@ async function handleFile(file) {
 
 // ====== 실시간 구독 ======
 db.collection('waitlist_students').onSnapshot((snap) => {
-  allStudents = snap.docs.map(d => d.data());
+  allStudents = snap.docs.map(d => Object.assign({ _id: d.id }, d.data()));
   renderTable();
 }, (err) => {
   document.getElementById('student-tbody').innerHTML =
@@ -815,7 +839,7 @@ deleteTabSelect.addEventListener('change', async () => {
     for (let i = 0; i < linkedStudents.length; i += 400) {
       const chunk = linkedStudents.slice(i, i + 400);
       const writeBatch = db.batch();
-      chunk.forEach(s => writeBatch.delete(db.collection('waitlist_students').doc(s.sid)));
+      chunk.forEach(s => writeBatch.delete(db.collection('waitlist_students').doc(s._id)));
       await writeBatch.commit();
     }
     await db.collection('waitlist_batches').doc(targetId).delete();
@@ -886,19 +910,30 @@ function renderTable() {
   allBatches.forEach(b => { batchById[b.id] = b; });
 
   document.getElementById('student-tbody').innerHTML = list.map(s => {
-    const link = `${baseUrl}?c=${encodeURIComponent(s.sid)}`;
+    const link = `${baseUrl}?c=${encodeURIComponent(s._id)}`;
     const statusBadge = s.status
       ? `<span class="badge-status badge-${s.status}">${STATUS_LABEL[s.status] || s.status}</span>`
       : `<span class="badge-status badge-none">미응답</span>`;
     const classBadge = s.classAnswers
-      ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s.sid}')">제출완료 · 보기</span>`
+      ? `<span class="badge-status badge-class-done" style="cursor:pointer" onclick="openDetail('${s._id}')">제출완료 · 보기</span>`
       : `<span class="badge-status badge-class-none">미제출</span>`;
-    const statusLockCb = `<input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','statusLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
-    const classLockCb = `<input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s.sid}','classLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
+    const statusLockCb = `<input type="checkbox" ${s.statusLocked ? 'checked' : ''} onchange="toggleLock('${s._id}','statusLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
+    const classLockCb = `<input type="checkbox" ${s.classLocked ? 'checked' : ''} onchange="toggleLock('${s._id}','classLocked',this.checked)" title="확정" style="margin-left:8px;width:15px;height:15px;cursor:pointer;vertical-align:middle;">`;
+    function buildStatusHistoryChain(student) {
+      const hist = Array.isArray(student.statusHistory) ? student.statusHistory.slice() : [];
+      if (hist.length < 2) return '';
+      hist.sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+      return hist.map(h => {
+        const label = STATUS_LABEL[h.status] || h.status;
+        return (h.status === 'enroll' && h.desiredDate) ? `${label}(${h.desiredDate})` : label;
+      }).join(' → ');
+    }
+    const historyChain = buildStatusHistoryChain(s);
     const statusCell = `
       <div style="display:flex;align-items:center;">
         ${statusBadge}${s.status === 'enroll' && s.desiredDate ? `<span style="font-size:12px;color:#555;margin-left:8px;">${s.desiredDate}</span>` : ''}${statusLockCb}
-      </div>`;
+      </div>
+      ${historyChain ? `<div style="font-size:11px;color:#999;margin-top:2px;">${historyChain}</div>` : ''}`;
     const classCell = `<div style="display:flex;align-items:center;">${classBadge}${classLockCb}</div>`;
     const banOptions = ['<option value="">-</option>'].concat(
       Array.from({ length: 9 }, (_, i) => i + 1).map(n =>
@@ -910,8 +945,8 @@ function renderTable() {
     ).join('');
     const banCell = s.status === 'enroll' ? `
       <div style="display:flex;gap:4px;">
-        <select onchange="updateBanGroup('${s.sid}','ban',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${banOptions}</select>
-        <select onchange="updateBanGroup('${s.sid}','groupLetter',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${groupOptions}</select>
+        <select onchange="updateBanGroup('${s._id}','ban',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${banOptions}</select>
+        <select onchange="updateBanGroup('${s._id}','groupLetter',this.value)" style="font-size:12px;padding:4px 2px;border:1px solid #ddd;border-radius:4px;background:#fafafa;">${groupOptions}</select>
       </div>` : '';
     const uploadDateLabel = batchById[s.batchId] ? batchLabel(batchById[s.batchId]) : '-';
     return `
@@ -919,7 +954,7 @@ function renderTable() {
         <td>${uploadDateLabel}</td>
         <td>${s.admissionType || ''}</td>
         <td>${s.sid || ''}</td>
-        <td><a href="javascript:void(0)" onclick="openInfoModal('${s.sid}')" style="color:#00ADAA;text-decoration:none;cursor:pointer;">${s.name || ''}</a></td>
+        <td><a href="javascript:void(0)" onclick="openInfoModal('${s._id}')" style="color:#00ADAA;text-decoration:none;cursor:pointer;">${s.name || ''}</a></td>
         <td>${s.gender || ''}</td>
         <td>${s.phone || ''}</td>
         <td>${s.parentPhone || ''}</td>
@@ -931,17 +966,17 @@ function renderTable() {
   }).join('');
 }
 
-async function toggleLock(sid, field, checked) {
+async function toggleLock(id, field, checked) {
   try {
-    await db.collection('waitlist_students').doc(sid).set({ [field]: checked }, { merge: true });
+    await db.collection('waitlist_students').doc(id).set({ [field]: checked }, { merge: true });
   } catch (e) {
     alert('저장 실패: ' + e.message);
   }
 }
 
-async function updateBanGroup(sid, field, value) {
+async function updateBanGroup(id, field, value) {
   try {
-    await db.collection('waitlist_students').doc(sid).set({ [field]: value }, { merge: true });
+    await db.collection('waitlist_students').doc(id).set({ [field]: value }, { merge: true });
   } catch (e) {
     alert('저장 실패: ' + e.message);
   }
@@ -955,8 +990,8 @@ function copyLink(link, btn) {
   }).catch(() => alert(link));
 }
 
-function openDetail(sid) {
-  const s = allStudents.find(x => x.sid === sid);
+function openDetail(id) {
+  const s = allStudents.find(x => x._id === id);
   if (!s) return;
   document.getElementById('modal-name').textContent = `${s.name} (${s.sid}) 수업신청 내역`;
   const ans = s.classAnswers || {};
@@ -968,8 +1003,8 @@ function openDetail(sid) {
   openModal('modal-detail');
 }
 
-function openInfoModal(sid) {
-  const s = allStudents.find(x => x.sid === sid);
+function openInfoModal(id) {
+  const s = allStudents.find(x => x._id === id);
   if (!s) return;
   document.getElementById('modal-info-name').textContent = `${s.name} (${s.sid}) 정보`;
   const rows = [
